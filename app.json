@@ -1,0 +1,30 @@
+{
+  "expo": {
+    "name": "focuskink",
+    "slug": "snack-c301c51c-1957-4d64-82ae-f165fbb5295c",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icondoapp.jpeg",
+    "userInterfaceStyle": "light",
+    "newArchEnabled": true,
+    "ios": {
+      "supportsTablet": true
+    },
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/icondoapp.jpeg",
+        "backgroundColor": "#ffffff"
+      },
+      "edgeToEdgeEnabled": true
+    },
+    "web": {
+      "favicon": "./assets/icondoapp.jpeg"
+    },
+    "extra": {
+      "eas": {
+        "projectId": "f5b3f577-c8ed-4f91-9490-1d8546817a3b"
+      }
+    },
+    "owner": "sfonfs"
+  }
+}
