@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from "react";
+import React, { useState } from "react";
 import {
   View,
   Text,
@@ -10,51 +10,57 @@ import {
   KeyboardAvoidingView,
   Platform,
   ScrollView,
-  Keyboard,
+  Modal,
 } from "react-native";
 import { useNavigation } from "@react-navigation/native";
+import { useAuth } from "../contexts/AuthContext";
 
 export default function TelaRedefinirSenha() {
   const navigation = useNavigation();
+  const { resetPassword } = useAuth();
   const [email, setEmail] = useState("");
-  const scrollRef = useRef(null);
-  const inputRef = useRef(null);
-
-  useEffect(() => {
-    const hideKeyboard = Keyboard.addListener("keyboardDidHide", () => {
-      if (scrollRef.current)
-        scrollRef.current.scrollTo({ y: 0, animated: true });
-    });
-
-    return () => hideKeyboard.remove();
-  }, []);
+  const [erro, setErro] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [modalVisible, setModalVisible] = useState(false);
 
   const emailValido = /\S+@\S+\.\S+/.test(email);
 
-  const handleEnviarCodigo = () => {
-    if (!emailValido) return;
-    navigation.navigate("Codigo");
-  };
+  const handleEnviarCodigo = async () => {
+    if (!emailValido || loading) return;
 
-  const scrollToInput = () => {
-    if (scrollRef.current && inputRef.current) {
-      inputRef.current.measureLayout(
-        scrollRef.current.getInnerViewNode(),
-        (x, y) => scrollRef.current.scrollTo({ y: y - 20, animated: true })
-      );
+    setErro("");
+    setLoading(true);
+
+    try {
+      await resetPassword(email);
+      setLoading(false);
+      setModalVisible(true);
+    } catch (e) {
+      setLoading(false);
+      if (e.message === "INVALID_EMAIL") {
+        setErro("E-mail inválido. Verifique e tente novamente.");
+      } else if (e.message === "USER_NOT_FOUND") {
+        setErro("Nenhuma conta encontrada com esse e-mail.");
+      } else {
+        setErro("Não foi possível enviar o e-mail. Tente novamente.");
+      }
     }
   };
 
+  const handleContinuarModal = () => {
+    setModalVisible(false);
+    navigation.goBack();
+  };
+
   return (
-    <View style={{ flex: 1, backgroundColor: "#141414" }}>
+    <View style={{ flex: 1, backgroundColor: "#FFFFFF" }}>
       <KeyboardAvoidingView
         style={{ flex: 1 }}
         behavior={Platform.OS === "ios" ? "padding" : "height"}
         keyboardVerticalOffset={Platform.OS === "ios" ? 20 : 0}
       >
         <ScrollView
-          ref={scrollRef}
-          style={{ flex: 1, backgroundColor: "#141414" }}
+          style={{ flex: 1, backgroundColor: "#FFFFFF" }}
           contentContainerStyle={{ flexGrow: 1 }}
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
@@ -85,36 +91,63 @@ export default function TelaRedefinirSenha() {
             <View style={styles.content}>
               <Text style={styles.labelTopo}>Insira seu e-mail</Text>
               <Text style={styles.texto}>
-                Ao inserir seu e-mail no campo abaixo, enviaremos um código para você.
+                Ao inserir seu e-mail no campo abaixo, enviaremos um link para
+                redefinir sua senha.
               </Text>
 
               <Text style={styles.label}>E-mail</Text>
               <TextInput
-                ref={inputRef}
                 placeholder="Digite aqui"
                 placeholderTextColor="#888"
                 style={styles.input}
                 value={email}
-                onChangeText={setEmail}
+                onChangeText={(t) => {
+                  setEmail(t);
+                  setErro("");
+                }}
                 keyboardType="email-address"
                 autoCapitalize="none"
-                onFocus={scrollToInput}
               />
 
-              {!emailValido && email.length > 0 && (
+              {!emailValido && email.length > 0 && !erro && (
                 <Text style={styles.erro}>Digite um e-mail válido</Text>
               )}
 
+              {!!erro && <Text style={styles.erro}>{erro}</Text>}
+
               <TouchableOpacity
-                style={[styles.botaoFinalizar, !emailValido && { opacity: 0.5 }]}
-                disabled={!emailValido}
+                style={[
+                  styles.botaoFinalizar,
+                  (!emailValido || loading) && { opacity: 0.5 },
+                ]}
+                disabled={!emailValido || loading}
                 onPress={handleEnviarCodigo}
               >
-                <Text style={styles.textoBotaoFinalizar}>Confirmar e-mail</Text>
+                <Text style={styles.textoBotaoFinalizar}>
+                  {loading ? "Enviando..." : "Confirmar e-mail"}
+                </Text>
               </TouchableOpacity>
             </View>
           </View>
         </ScrollView>
+
+        <Modal visible={modalVisible} transparent animationType="fade">
+          <View style={styles.modalOverlay}>
+            <View style={styles.modalContainer}>
+              <Text style={styles.modalTitle}>Verifique seu e-mail</Text>
+              <Text style={styles.modalText}>
+                Enviamos um link para redefinir sua senha. Acesse seu e-mail e
+                siga as instruções para criar uma nova senha.
+              </Text>
+              <TouchableOpacity
+                style={styles.modalButton}
+                onPress={handleContinuarModal}
+              >
+                <Text style={styles.modalButtonText}>Continuar</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </Modal>
       </KeyboardAvoidingView>
     </View>
   );
@@ -209,6 +242,42 @@ const styles = StyleSheet.create({
   textoBotaoFinalizar: {
     color: "#FFFFFF",
     fontSize: 15,
+    fontFamily: "Poppins_700Bold",
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(0,0,0,0.5)",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  modalContainer: {
+    width: width * 0.8,
+    backgroundColor: "#FFFFFF",
+    borderRadius: 16,
+    padding: 20,
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontFamily: "Poppins_700Bold",
+    color: "#1F1F1F",
+    marginBottom: 10,
+  },
+  modalText: {
+    fontSize: 13,
+    fontFamily: "Poppins_400Regular",
+    color: "#6F6F6F",
+    marginBottom: 20,
+    lineHeight: 18,
+  },
+  modalButton: {
+    backgroundColor: "#FF0F7B",
+    paddingVertical: 12,
+    borderRadius: 12,
+    alignItems: "center",
+  },
+  modalButtonText: {
+    color: "#FFFFFF",
+    fontSize: 14,
     fontFamily: "Poppins_700Bold",
   },
 });

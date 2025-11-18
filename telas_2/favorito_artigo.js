@@ -1,37 +1,38 @@
-import React, {
-  useContext,
-  useMemo,
-  useState,
-  useEffect
-} from "react";
 import {
-  View,
-  Text,
-  StyleSheet,
-  ScrollView,
-  Image,
-  TouchableOpacity,
-  Dimensions,
-  Modal,
-  FlatList,
-  TextInput
-} from "react-native";
+  Poppins_400Regular,
+  Poppins_700Bold,
+  useFonts
+} from "@expo-google-fonts/poppins";
+import { useNavigation } from "@react-navigation/native";
 import { BlurView } from "expo-blur";
 import { LinearGradient } from "expo-linear-gradient";
-import { useNavigation } from "@react-navigation/native";
-import {
-  useFonts,
-  Poppins_400Regular,
-  Poppins_700Bold
-} from "@expo-google-fonts/poppins";
 import * as SplashScreen from "expo-splash-screen";
-import { ArticleContext } from "../contexts/ArticleContext";
-import { StreakContext } from "../contexts/StreakContext";
-import iconsearch from "../assets_icons/iconsearch.png";
-import iconfavorite from "../assets_icons/icon_favorite.png";
+import {
+  useContext,
+  useEffect,
+  useMemo,
+  useState
+} from "react";
+import {
+  Dimensions,
+  FlatList,
+  Image,
+  Modal,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View
+} from "react-native";
 import arrow2 from "../assets_icons/arrow2_icon.png";
 import arrowMain from "../assets_icons/arrow_icon.png";
+import iconfavorite from "../assets_icons/icon_favorite.png";
+import iconsearch from "../assets_icons/iconsearch.png";
 import kebab from "../assets_icons/kebab.png";
+import { ArticleContext } from "../contexts/ArticleContext";
+import { StreakContext } from "../contexts/StreakContext";
+import { useAppTheme } from "../contexts/ThemeContext";
 
 const { width } = Dimensions.get("window");
 
@@ -39,6 +40,7 @@ SplashScreen.preventAutoHideAsync();
 
 export default function FavoritoArtigo() {
   const navigation = useNavigation();
+  const { colors, isDark } = useAppTheme();
 
   const [fontsLoaded] = useFonts({
     Poppins_400Regular,
@@ -63,6 +65,9 @@ export default function FavoritoArtigo() {
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [fontSize, setFontSize] = useState(12);
   const [page, setPage] = useState(0);
+
+  const blurTint = isDark ? "dark" : "light";
+  const blurIntensity = isDark ? 90 : 70;
 
   const favs = useMemo(
     () => getFavoriteArticles(),
@@ -108,7 +113,8 @@ export default function FavoritoArtigo() {
     }
   }, [fontsLoaded]);
 
-  if (!fontsLoaded) return <View style={{ flex: 1, backgroundColor: "#fff" }} />;
+  if (!fontsLoaded)
+    return <View style={{ flex: 1, backgroundColor: colors.background }} />;
 
   const totalPages = pages.length;
   const pagesCount = currentArticle?.pagesCount || 1;
@@ -134,13 +140,24 @@ export default function FavoritoArtigo() {
     return (
       <TouchableOpacity
         activeOpacity={0.9}
-        style={styles.favRow}
+        style={[
+          styles.favRow,
+          {
+            backgroundColor: colors.card,
+            borderColor: colors.border
+          }
+        ]}
         onPress={() => {
           setCurrentArticle(article);
           setDetailOpen(true);
         }}
       >
-        <View style={styles.favThumbBox}>
+        <View
+          style={[
+            styles.favThumbBox,
+            { backgroundColor: colors.cardElevated }
+          ]}
+        >
           {article.imagem ? (
             <Image
               source={article.imagem}
@@ -149,29 +166,55 @@ export default function FavoritoArtigo() {
             />
           ) : (
             <View
-              style={[styles.favThumb, { backgroundColor: "#e4e4e4" }]}
+              style={[
+                styles.favThumb,
+                { backgroundColor: colors.softBorder }
+              ]}
             />
           )}
         </View>
 
         <View style={styles.favInfoBox}>
-          <Text style={styles.favTitle} numberOfLines={2}>
+          <Text
+            style={[
+              styles.favTitle,
+              { color: colors.textTitle }
+            ]}
+            numberOfLines={2}
+          >
             {article.tituloCard}
           </Text>
 
           {!!article.tema && (
-            <Text style={styles.favTema} numberOfLines={1}>
+            <Text
+              style={[
+                styles.favTema,
+                { color: colors.accent }
+              ]}
+              numberOfLines={1}
+            >
               {article.tema}
             </Text>
           )}
 
-          <Text style={styles.favMeta} numberOfLines={1}>
+          <Text
+            style={[
+              styles.favMeta,
+              { color: colors.textSecondary }
+            ]}
+            numberOfLines={1}
+          >
             {articlePages} pág • {articleDuration} min
-            {!!article.publishedAt &&
-              ` • ${article.publishedAt}`}
+            {!!article.publishedAt && ` • ${article.publishedAt}`}
           </Text>
 
-          <Text style={styles.favSinopse} numberOfLines={2}>
+          <Text
+            style={[
+              styles.favSinopse,
+              { color: colors.textBody }
+            ]}
+            numberOfLines={2}
+          >
             {article.sinopseCard}
           </Text>
 
@@ -192,7 +235,13 @@ export default function FavoritoArtigo() {
             </TouchableOpacity>
 
             <TouchableOpacity
-              style={styles.favStarBtn}
+              style={[
+                styles.favStarBtn,
+                {
+                  backgroundColor: colors.card,
+                  borderColor: colors.border
+                }
+              ]}
               onPress={() => toggleFavorite(article.id)}
             >
               <Image
@@ -202,7 +251,7 @@ export default function FavoritoArtigo() {
                   {
                     tintColor: isFavorite(article.id)
                       ? "#FFD700"
-                      : "#ff005c"
+                      : colors.accent
                   }
                 ]}
               />
@@ -214,7 +263,12 @@ export default function FavoritoArtigo() {
   };
 
   return (
-    <View style={{ flex: 1, backgroundColor: "#f6f6f6" }}>
+    <View
+      style={{
+        flex: 1,
+        backgroundColor: colors.background
+      }}
+    >
       <ScrollView
         contentContainerStyle={{ paddingBottom: 60 }}
         showsVerticalScrollIndicator={false}
@@ -226,26 +280,51 @@ export default function FavoritoArtigo() {
           >
             <Image
               source={arrowMain}
-              style={styles.backToArticlesIcon}
+              style={[
+                styles.backToArticlesIcon,
+                { tintColor: colors.icon }
+              ]}
             />
           </TouchableOpacity>
 
           <View style={styles.searchBarWrapper}>
-            <View style={styles.searchBar}>
+            <View
+              style={[
+                styles.searchBar,
+                {
+                  backgroundColor: colors.input,
+                  borderColor: colors.border
+                }
+              ]}
+            >
               <Image
                 source={iconsearch}
-                style={styles.searchIcon}
+                style={[
+                  styles.searchIcon,
+                  { tintColor: colors.textMuted }
+                ]}
               />
               <TextInput
                 placeholder="Pesquisar nos favoritos..."
-                placeholderTextColor="#6B7280"
-                style={styles.searchInput}
+                placeholderTextColor={colors.textMuted}
+                style={[
+                  styles.searchInput,
+                  { color: colors.textPrimary }
+                ]}
                 value={searchQuery}
                 onChangeText={setSearchQuery}
               />
             </View>
 
-            <View style={styles.topFavoriteStatic}>
+            <View
+              style={[
+                styles.topFavoriteStatic,
+                {
+                  backgroundColor: colors.input,
+                  borderColor: colors.border
+                }
+              ]}
+            >
               <Image
                 source={iconfavorite}
                 style={[
@@ -257,8 +336,21 @@ export default function FavoritoArtigo() {
             </View>
           </View>
 
-          <Text style={styles.screenTitle}>Favoritos</Text>
-          <Text style={styles.screenSubtitle}>
+          <Text
+            style={[
+              styles.screenTitle,
+              { color: colors.textTitle }
+            ]}
+          >
+            Favoritos
+          </Text>
+
+          <Text
+            style={[
+              styles.screenSubtitle,
+              { color: colors.textSecondary }
+            ]}
+          >
             Seus artigos salvos para ler depois
           </Text>
         </View>
@@ -273,18 +365,35 @@ export default function FavoritoArtigo() {
             q: searchQuery
           }}
           ListEmptyComponent={
-            <View style={styles.emptyBox}>
-              <Text style={styles.emptyText}>
+            <View
+              style={[
+                styles.emptyBox,
+                {
+                  backgroundColor: colors.card,
+                  borderColor: colors.border
+                }
+              ]}
+            >
+              <Text
+                style={[
+                  styles.emptyText,
+                  { color: colors.textTitle }
+                ]}
+              >
                 Nenhum artigo favoritado.
               </Text>
-              <Text style={styles.emptyText2}>
+
+              <Text
+                style={[
+                  styles.emptyText2,
+                  { color: colors.textBody }
+                ]}
+              >
                 Você pode favoritar artigos tocando na estrela.
               </Text>
             </View>
           }
-          renderItem={({ item }) => (
-            <FavoriteRow article={item} />
-          )}
+          renderItem={({ item }) => <FavoriteRow article={item} />}
         />
       </ScrollView>
 
@@ -296,13 +405,24 @@ export default function FavoritoArtigo() {
       >
         {!!currentArticle && (
           <BlurView
-            intensity={80}
-            tint="light"
+            intensity={blurIntensity}
+            tint={blurTint}
             style={styles.blurFill}
           >
-            <View style={styles.detailModalCard}>
+            <View
+              style={[
+                styles.detailModalCard,
+                {
+                  backgroundColor: colors.card,
+                  borderColor: colors.border
+                }
+              ]}
+            >
               <TouchableOpacity
-                style={styles.detailBack}
+                style={[
+                  styles.detailBack,
+                  { backgroundColor: colors.accent }
+                ]}
                 onPress={() => setDetailOpen(false)}
               >
                 <Image
@@ -313,30 +433,74 @@ export default function FavoritoArtigo() {
 
               <Image
                 source={currentArticle.imagem}
-                style={styles.detailImage}
+                style={[
+                  styles.detailImage,
+                  { backgroundColor: colors.input }
+                ]}
               />
 
-              <Text style={styles.detailTitle}>
+              <Text
+                style={[
+                  styles.detailTitle,
+                  { color: colors.textTitle }
+                ]}
+              >
                 {currentArticle.tituloFull}
               </Text>
 
               <View style={styles.chipsRow}>
-                <View style={styles.chip}>
-                  <Text style={styles.chipText}>
+                <View
+                  style={[
+                    styles.chip,
+                    {
+                      backgroundColor: colors.chipBg
+                    }
+                  ]}
+                >
+                  <Text
+                    style={[
+                      styles.chipText,
+                      { color: colors.textBody }
+                    ]}
+                  >
                     {pagesCount}{" "}
                     {pagesCount === 1 ? "página" : "páginas"}
                   </Text>
                 </View>
 
-                <View style={styles.chip}>
-                  <Text style={styles.chipText}>
+                <View
+                  style={[
+                    styles.chip,
+                    {
+                      backgroundColor: colors.chipBg
+                    }
+                  ]}
+                >
+                  <Text
+                    style={[
+                      styles.chipText,
+                      { color: colors.textBody }
+                    ]}
+                  >
                     {durationMin} min
                   </Text>
                 </View>
 
                 {!!year && (
-                  <View style={styles.chip}>
-                    <Text style={styles.chipText}>
+                  <View
+                    style={[
+                      styles.chip,
+                      {
+                        backgroundColor: colors.chipBg
+                      }
+                    ]}
+                  >
+                    <Text
+                      style={[
+                        styles.chipText,
+                        { color: colors.textBody }
+                      ]}
+                    >
                       {year}
                     </Text>
                   </View>
@@ -344,7 +508,12 @@ export default function FavoritoArtigo() {
               </View>
 
               {!!currentArticle.descricaoCurta && (
-                <Text style={styles.detailDesc}>
+                <Text
+                  style={[
+                    styles.detailDesc,
+                    { color: colors.textBody }
+                  ]}
+                >
                   {currentArticle.descricaoCurta}
                 </Text>
               )}
@@ -352,9 +521,7 @@ export default function FavoritoArtigo() {
               <View style={styles.detailFooter}>
                 <TouchableOpacity
                   style={styles.readBigBtn}
-                  onPress={() =>
-                    startReading(currentArticle)
-                  }
+                  onPress={() => startReading(currentArticle)}
                 >
                   <LinearGradient
                     colors={["#ff2b6b", "#ff005c"]}
@@ -369,7 +536,13 @@ export default function FavoritoArtigo() {
                 </TouchableOpacity>
 
                 <TouchableOpacity
-                  style={styles.starButton}
+                  style={[
+                    styles.starButton,
+                    {
+                      backgroundColor: colors.card,
+                      borderColor: colors.border
+                    }
+                  ]}
                   onPress={() =>
                     toggleFavorite(currentArticle.id)
                   }
@@ -383,7 +556,7 @@ export default function FavoritoArtigo() {
                           currentArticle.id
                         )
                           ? "#FFD700"
-                          : "#ff005c"
+                          : colors.accent
                       }
                     ]}
                   />
@@ -401,7 +574,12 @@ export default function FavoritoArtigo() {
         onRequestClose={() => setReaderOpen(false)}
       >
         {!!currentArticle && (
-          <View style={styles.readerRoot}>
+          <View
+            style={[
+              styles.readerRoot,
+              { backgroundColor: colors.background }
+            ]}
+          >
             <View style={styles.readerHeader}>
               <TouchableOpacity
                 style={styles.readerBack}
@@ -409,21 +587,39 @@ export default function FavoritoArtigo() {
               >
                 <Image
                   source={arrowMain}
-                  style={styles.readerBackIcon}
+                  style={[
+                    styles.readerBackIcon,
+                    { tintColor: colors.icon }
+                  ]}
                 />
               </TouchableOpacity>
 
-              <Text style={styles.readerTitle} numberOfLines={1}>
+              <Text
+                style={[
+                  styles.readerTitle,
+                  { color: colors.textTitle }
+                ]}
+                numberOfLines={1}
+              >
                 {currentArticle.tituloFull}
               </Text>
 
               <TouchableOpacity
-                style={styles.kebabBtn}
+                style={[
+                  styles.kebabBtn,
+                  {
+                    backgroundColor: colors.input,
+                    borderColor: colors.border
+                  }
+                ]}
                 onPress={() => setSettingsOpen(true)}
               >
                 <Image
                   source={kebab}
-                  style={styles.kebabIcon}
+                  style={[
+                    styles.kebabIcon,
+                    { tintColor: colors.icon }
+                  ]}
                 />
               </TouchableOpacity>
             </View>
@@ -440,10 +636,9 @@ export default function FavoritoArtigo() {
                     style={[
                       styles.readerParagraph,
                       {
+                        color: colors.textPrimary,
                         fontSize,
-                        lineHeight: Math.round(
-                          fontSize * 1.7
-                        )
+                        lineHeight: Math.round(fontSize * 1.7)
                       }
                     ]}
                   >
@@ -453,26 +648,63 @@ export default function FavoritoArtigo() {
               </View>
             </ScrollView>
 
-            <View style={styles.readerFooter}>
+            <View
+              style={[
+                styles.readerFooter,
+                {
+                  backgroundColor: colors.card,
+                  borderColor: colors.border
+                }
+              ]}
+            >
               <TouchableOpacity
-                style={styles.pageNav}
+                style={[
+                  styles.pageNav,
+                  {
+                    backgroundColor: colors.input,
+                    borderColor: colors.softBorder
+                  }
+                ]}
                 disabled={page === 0}
                 onPress={() =>
                   setPage((old) => Math.max(0, old - 1))
                 }
               >
-                <Text style={styles.pageNavText}>{"<"}</Text>
+                <Text
+                  style={[
+                    styles.pageNavText,
+                    { color: colors.accent }
+                  ]}
+                >
+                  {"<"}
+                </Text>
               </TouchableOpacity>
 
-              <View style={styles.pageCounter}>
-                <Text style={styles.pageCounterText}>
+              <View
+                style={[
+                  styles.pageCounter,
+                  {
+                    backgroundColor: colors.input,
+                    borderColor: colors.softBorder
+                  }
+                ]}
+              >
+                <Text
+                  style={[
+                    styles.pageCounterText,
+                    { color: colors.textPrimary }
+                  ]}
+                >
                   {page + 1}/{totalPages}
                 </Text>
               </View>
 
               {page === totalPages - 1 ? (
                 <TouchableOpacity
-                  style={styles.finishBtn}
+                  style={[
+                    styles.finishBtn,
+                    { backgroundColor: colors.accent }
+                  ]}
                   onPress={handleFinish}
                 >
                   <Text style={styles.finishBtnText}>
@@ -481,17 +713,25 @@ export default function FavoritoArtigo() {
                 </TouchableOpacity>
               ) : (
                 <TouchableOpacity
-                  style={styles.pageNav}
+                  style={[
+                    styles.pageNav,
+                    {
+                      backgroundColor: colors.input,
+                      borderColor: colors.softBorder
+                    }
+                  ]}
                   onPress={() =>
                     setPage((old) =>
-                      Math.min(
-                        totalPages - 1,
-                        old + 1
-                      )
+                      Math.min(totalPages - 1, old + 1)
                     )
                   }
                 >
-                  <Text style={styles.pageNavText}>
+                  <Text
+                    style={[
+                      styles.pageNavText,
+                      { color: colors.accent }
+                    ]}
+                  >
                     {">"}
                   </Text>
                 </TouchableOpacity>
@@ -499,47 +739,98 @@ export default function FavoritoArtigo() {
             </View>
 
             {settingsOpen && (
-              <View style={styles.settingsOverlay}>
-                <View style={styles.settingsCard}>
-                  <Text style={styles.settingsHeaderText}>
+              <View
+                style={[
+                  styles.settingsOverlay,
+                  { backgroundColor: colors.overlay }
+                ]}
+              >
+                <View
+                  style={[
+                    styles.settingsCard,
+                    {
+                      backgroundColor: colors.card,
+                      borderColor: colors.border
+                    }
+                  ]}
+                >
+                  <Text
+                    style={[
+                      styles.settingsHeaderText,
+                      { color: colors.textTitle }
+                    ]}
+                  >
                     Tamanho da fonte
                   </Text>
 
                   <View style={styles.fontRow}>
                     <TouchableOpacity
-                      style={styles.fontBtn}
+                      style={[
+                        styles.fontBtn,
+                        {
+                          backgroundColor: colors.input,
+                          borderColor: colors.softBorder
+                        }
+                      ]}
                       onPress={() =>
-                        setFontSize((s) =>
-                          Math.max(10, s - 1)
-                        )
+                        setFontSize((s) => Math.max(10, s - 1))
                       }
                     >
-                      <Text style={styles.fontBtnText}>-</Text>
+                      <Text
+                        style={[
+                          styles.fontBtnText,
+                          { color: colors.textTitle }
+                        ]}
+                      >
+                        -
+                      </Text>
                     </TouchableOpacity>
 
-                    <Text style={styles.fontSizeValue}>
+                    <Text
+                      style={[
+                        styles.fontSizeValue,
+                        { color: colors.textPrimary }
+                      ]}
+                    >
                       {fontSize}
                     </Text>
 
                     <TouchableOpacity
-                      style={styles.fontBtn}
+                      style={[
+                        styles.fontBtn,
+                        {
+                          backgroundColor: colors.input,
+                          borderColor: colors.softBorder
+                        }
+                      ]}
                       onPress={() =>
-                        setFontSize((s) =>
-                          Math.min(22, s + 1)
-                        )
+                        setFontSize((s) => Math.min(22, s + 1))
                       }
                     >
-                      <Text style={styles.fontBtnText}>+</Text>
+                      <Text
+                        style={[
+                          styles.fontBtnText,
+                          { color: colors.textTitle }
+                        ]}
+                      >
+                        +
+                      </Text>
                     </TouchableOpacity>
                   </View>
 
                   <TouchableOpacity
-                    style={styles.settingsClose}
-                    onPress={() =>
-                      setSettingsOpen(false)
-                    }
+                    style={[
+                      styles.settingsClose,
+                      { backgroundColor: colors.softBorder }
+                    ]}
+                    onPress={() => setSettingsOpen(false)}
                   >
-                    <Text style={styles.settingsCloseText}>
+                    <Text
+                      style={[
+                        styles.settingsCloseText,
+                        { color: colors.textTitle }
+                      ]}
+                    >
                       Fechar
                     </Text>
                   </TouchableOpacity>
@@ -565,8 +856,7 @@ const styles = StyleSheet.create({
   },
   backToArticlesIcon: {
     width: 36,
-    height: 36,
-    tintColor: "#0F172A"
+    height: 36
   },
   searchBarWrapper: {
     flexDirection: "row",
@@ -574,90 +864,75 @@ const styles = StyleSheet.create({
   },
   searchBar: {
     flex: 1,
-    backgroundColor: "#ededed",
     borderRadius: 14,
     flexDirection: "row",
     alignItems: "center",
     paddingHorizontal: 14,
     height: 50,
-    borderWidth: 1,
-    borderColor: "#e6e6e6"
+    borderWidth: 1
   },
   searchIcon: {
     width: 20,
     height: 20,
-    tintColor: "#6B7280",
     marginRight: 10
   },
   searchInput: {
     flex: 1,
-    color: "#0F172A",
     fontFamily: "Poppins_400Regular",
     fontSize: 13
   },
   topFavoriteStatic: {
     width: 44,
     height: 44,
-    backgroundColor: "#ededed",
     borderRadius: 12,
     justifyContent: "center",
     alignItems: "center",
     marginLeft: 10,
-    borderWidth: 1,
-    borderColor: "#e6e6e6"
+    borderWidth: 1
   },
   topFavoriteIcon: {
     width: 24,
     height: 24
   },
   screenTitle: {
-    color: "#0F172A",
     fontFamily: "Poppins_700Bold",
     fontSize: 20,
     marginTop: 20
   },
   screenSubtitle: {
-    color: "#6B7280",
     fontFamily: "Poppins_400Regular",
     fontSize: 13,
     marginTop: 4,
     marginBottom: 20
   },
   emptyBox: {
-    backgroundColor: "#ededed",
     borderRadius: 14,
     padding: 20,
     marginHorizontal: 20,
     marginTop: 20,
-    borderWidth: 1,
-    borderColor: "#e6e6e6"
+    borderWidth: 1
   },
   emptyText: {
-    color: "#0F172A",
     fontFamily: "Poppins_700Bold",
     fontSize: 15,
     marginBottom: 4
   },
   emptyText2: {
-    color: "#4B5563",
     fontFamily: "Poppins_400Regular",
     fontSize: 13,
     lineHeight: 20
   },
   favRow: {
     flexDirection: "row",
-    backgroundColor: "#ededed",
     borderRadius: 16,
     marginHorizontal: 20,
     marginBottom: 16,
     padding: 12,
-    borderWidth: 1,
-    borderColor: "#cfcfcf"
+    borderWidth: 1
   },
   favThumbBox: {
     width: 90,
     height: 90,
-    backgroundColor: "#e4e4e4",
     borderRadius: 10,
     overflow: "hidden",
     marginRight: 12
@@ -668,29 +943,24 @@ const styles = StyleSheet.create({
     borderRadius: 10
   },
   favInfoBox: {
-    flex: 1,
-    justifyContent: "flex-start"
+    flex: 1
   },
   favTitle: {
-    color: "#0F172A",
     fontFamily: "Poppins_700Bold",
     fontSize: 14,
     marginBottom: 4
   },
   favTema: {
-    color: "#ff005c",
     fontFamily: "Poppins_700Bold",
     fontSize: 11,
     marginBottom: 4
   },
   favMeta: {
-    color: "#6B7280",
     fontFamily: "Poppins_400Regular",
     fontSize: 11,
     marginBottom: 8
   },
   favSinopse: {
-    color: "#4B5563",
     fontFamily: "Poppins_400Regular",
     fontSize: 12,
     lineHeight: 18,
@@ -721,12 +991,10 @@ const styles = StyleSheet.create({
   favStarBtn: {
     width: 36,
     height: 36,
-    backgroundColor: "#ffffff",
     borderRadius: 10,
     alignItems: "center",
     justifyContent: "center",
-    borderWidth: 1,
-    borderColor: "#e6e6e6"
+    borderWidth: 1
   },
   favStarIcon: {
     width: 18,
@@ -740,11 +1008,9 @@ const styles = StyleSheet.create({
   },
   detailModalCard: {
     width: "100%",
-    backgroundColor: "#ffffff",
     borderRadius: 18,
     padding: 16,
-    borderWidth: 1,
-    borderColor: "#e6e6e6"
+    borderWidth: 1
   },
   detailBack: {
     position: "absolute",
@@ -754,7 +1020,6 @@ const styles = StyleSheet.create({
     width: 34,
     height: 34,
     borderRadius: 17,
-    backgroundColor: "#ff005c",
     alignItems: "center",
     justifyContent: "center"
   },
@@ -768,11 +1033,9 @@ const styles = StyleSheet.create({
     height: width * 0.45,
     borderRadius: 12,
     marginBottom: 12,
-    backgroundColor: "#e4e4e4",
     marginTop: 4
   },
   detailTitle: {
-    color: "#0F172A",
     fontFamily: "Poppins_700Bold",
     fontSize: 16,
     marginBottom: 8
@@ -784,24 +1047,18 @@ const styles = StyleSheet.create({
     marginBottom: 10
   },
   chip: {
-    backgroundColor: "#ededed",
     borderRadius: 10,
     paddingVertical: 4,
     paddingHorizontal: 10,
     marginRight: 8,
-    marginBottom: 6,
-    alignSelf: "flex-start",
-    justifyContent: "center",
-    alignItems: "center"
+    marginBottom: 6
   },
   chipText: {
-    color: "#374151",
     fontSize: 12,
     lineHeight: 16,
     fontFamily: "Poppins_400Regular"
   },
   detailDesc: {
-    color: "#4B5563",
     fontSize: 13,
     fontFamily: "Poppins_400Regular",
     marginBottom: 12,
@@ -833,20 +1090,17 @@ const styles = StyleSheet.create({
   starButton: {
     width: 44,
     height: 44,
-    backgroundColor: "#ffffff",
     borderRadius: 12,
     alignItems: "center",
     justifyContent: "center",
-    borderWidth: 1,
-    borderColor: "#e6e6e6"
+    borderWidth: 1
   },
   starIcon: {
     width: 20,
     height: 20
   },
   readerRoot: {
-    flex: 1,
-    backgroundColor: "#f6f6f6"
+    flex: 1
   },
   readerHeader: {
     flexDirection: "row",
@@ -864,12 +1118,10 @@ const styles = StyleSheet.create({
   },
   readerBackIcon: {
     width: 36,
-    height: 36,
-    tintColor: "#0F172A"
+    height: 36
   },
   readerTitle: {
     flex: 1,
-    color: "#0F172A",
     fontFamily: "Poppins_700Bold",
     fontSize: 16,
     marginLeft: 10,
@@ -879,16 +1131,13 @@ const styles = StyleSheet.create({
     width: 36,
     height: 36,
     borderRadius: 10,
-    backgroundColor: "#ededed",
     alignItems: "center",
     justifyContent: "center",
-    borderWidth: 1,
-    borderColor: "#e6e6e6"
+    borderWidth: 1
   },
   kebabIcon: {
     width: 16,
-    height: 16,
-    tintColor: "#0F172A"
+    height: 16
   },
   readerScroll: {
     flex: 1,
@@ -898,7 +1147,6 @@ const styles = StyleSheet.create({
     marginTop: 20
   },
   readerParagraph: {
-    color: "#111827",
     fontFamily: "Poppins_400Regular",
     marginBottom: 16
   },
@@ -907,28 +1155,23 @@ const styles = StyleSheet.create({
     bottom: 34,
     left: 20,
     right: 20,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    backgroundColor: "#ffffff",
     borderRadius: 14,
     paddingHorizontal: 12,
     paddingVertical: 10,
     borderWidth: 1,
-    borderColor: "#e6e6e6"
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between"
   },
   pageNav: {
     width: 46,
     height: 36,
     borderRadius: 8,
-    backgroundColor: "#ededed",
     alignItems: "center",
     justifyContent: "center",
-    borderWidth: 1,
-    borderColor: "#d4d4d4"
+    borderWidth: 1
   },
   pageNavText: {
-    color: "#ff005c",
     fontFamily: "Poppins_700Bold",
     fontSize: 16
   },
@@ -936,17 +1179,13 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 6,
     borderRadius: 10,
-    backgroundColor: "#ededed",
-    borderWidth: 1,
-    borderColor: "#d4d4d4"
+    borderWidth: 1
   },
   pageCounterText: {
-    color: "#0F172A",
     fontFamily: "Poppins_700Bold",
     fontSize: 12
   },
   finishBtn: {
-    backgroundColor: "#ff005c",
     paddingHorizontal: 18,
     paddingVertical: 10,
     borderRadius: 10
@@ -959,19 +1198,15 @@ const styles = StyleSheet.create({
   settingsOverlay: {
     ...StyleSheet.absoluteFillObject,
     justifyContent: "center",
-    alignItems: "center",
-    backgroundColor: "rgba(0,0,0,0.25)"
+    alignItems: "center"
   },
   settingsCard: {
     width: "86%",
-    backgroundColor: "#ffffff",
     borderRadius: 16,
     padding: 16,
-    borderWidth: 1,
-    borderColor: "#e6e6e6"
+    borderWidth: 1
   },
   settingsHeaderText: {
-    color: "#0F172A",
     fontFamily: "Poppins_700Bold",
     fontSize: 14,
     marginBottom: 12
@@ -985,32 +1220,26 @@ const styles = StyleSheet.create({
     width: 32,
     height: 32,
     borderRadius: 8,
-    backgroundColor: "#ededed",
     alignItems: "center",
     justifyContent: "center",
-    borderWidth: 1,
-    borderColor: "#d4d4d4"
+    borderWidth: 1
   },
   fontBtnText: {
-    color: "#0F172A",
     fontFamily: "Poppins_700Bold",
     fontSize: 16
   },
   fontSizeValue: {
-    color: "#0F172A",
     fontFamily: "Poppins_700Bold",
     marginHorizontal: 12,
     fontSize: 14
   },
   settingsClose: {
-    backgroundColor: "#e5e7eb",
     borderRadius: 10,
     alignItems: "center",
     paddingVertical: 10,
     marginTop: 8
   },
   settingsCloseText: {
-    color: "#0F172A",
     fontFamily: "Poppins_700Bold",
     fontSize: 14
   }

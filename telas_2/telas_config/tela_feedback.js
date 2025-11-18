@@ -1,28 +1,32 @@
-import React, { useState } from "react";
 import {
-  View,
+  Poppins_400Regular,
+  Poppins_700Bold,
+  useFonts,
+} from "@expo-google-fonts/poppins";
+import { useNavigation } from "@react-navigation/native";
+import { useMemo, useState } from "react";
+import {
+  Alert,
+  Image,
+  KeyboardAvoidingView,
+  Linking,
+  Platform,
+  ScrollView,
+  StyleSheet,
   Text,
   TextInput,
   TouchableOpacity,
-  StyleSheet,
-  Image,
-  ScrollView,
-  KeyboardAvoidingView,
-  Platform,
-  Alert,
-  Linking,
+  View,
 } from "react-native";
-import { useNavigation } from "@react-navigation/native";
-import {
-  useFonts,
-  Poppins_400Regular,
-  Poppins_700Bold,
-} from "@expo-google-fonts/poppins";
+import { useAppTheme } from "../../contexts/ThemeContext";
 
 import arrowIcon from "../../assets_icons/arrow_icon.png";
 
 export default function TelaFeedback() {
   const navigation = useNavigation();
+  const { colors } = useAppTheme();
+  const styles = useMemo(() => makeStyles(colors), [colors]);
+
   const [feedback, setFeedback] = useState("");
 
   const [fontsLoaded] = useFonts({
@@ -31,7 +35,7 @@ export default function TelaFeedback() {
   });
 
   if (!fontsLoaded) {
-    return <View style={{ flex: 1, backgroundColor: "#f6f6f6" }} />;
+    return <View style={{ flex: 1, backgroundColor: colors.background }} />;
   }
 
   const handleEnviar = async () => {
@@ -47,22 +51,12 @@ export default function TelaFeedback() {
     const url = `mailto:${email}?subject=${subject}&body=${body}`;
 
     try {
-      const canOpen = await Linking.canOpenURL(url);
-      if (!canOpen) {
-        Alert.alert(
-          "Erro",
-          "Não foi possível abrir o aplicativo de e-mail neste dispositivo."
-        );
-        return;
-      }
-
       await Linking.openURL(url);
       navigation.goBack();
-    } catch (e) {
-      console.log("Erro ao tentar abrir o e-mail:", e);
+    } catch {
       Alert.alert(
         "Erro",
-        "Ocorreu um problema ao tentar enviar o feedback. Tente novamente."
+        "Não foi possível abrir um aplicativo de e-mail no dispositivo."
       );
     }
   };
@@ -90,23 +84,22 @@ export default function TelaFeedback() {
           </View>
 
           <Text style={styles.subtitle}>
-            Conte pra gente o que você achou do aplicativo, o que está
-            funcionando bem e o que podemos melhorar.
+            Conte pra gente o que você achou do aplicativo.
           </Text>
 
-          <Text style={styles.label}>Insira seu feedback abaixo:</Text>
+          <Text style={styles.label}>Seu feedback:</Text>
+
           <TextInput
             style={styles.input}
             placeholder="Digite aqui"
-            placeholderTextColor="#9CA3AF"
+            placeholderTextColor={colors.textMuted}
             value={feedback}
             onChangeText={setFeedback}
             multiline
           />
 
           <Text style={styles.subtexto}>
-            Desde já agradecemos o seu feedback! Estamos sempre trabalhando para
-            melhorar sua experiência.
+            Obrigado por nos ajudar a melhorar!
           </Text>
 
           <TouchableOpacity
@@ -122,78 +115,80 @@ export default function TelaFeedback() {
   );
 }
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: "#f6f6f6",
-  },
-  scroll: {
-    paddingHorizontal: 24,
-    paddingTop: 50,
-    paddingBottom: 40,
-  },
-  header: {
-    flexDirection: "row",
-    alignItems: "center",
-    marginBottom: 20,
-  },
-  backButton: {
-    marginRight: 12,
-  },
-  backIcon: {
-    width: 36,
-    height: 36,
-    tintColor: "#0F172A",
-  },
-  title: {
-    fontSize: 20,
-    color: "#0F172A",
-    fontFamily: "Poppins_700Bold",
-  },
-  subtitle: {
-    fontSize: 13,
-    color: "#4B5563",
-    fontFamily: "Poppins_400Regular",
-    marginBottom: 20,
-    lineHeight: 20,
-  },
-  label: {
-    fontSize: 14,
-    color: "#0F172A",
-    fontFamily: "Poppins_700Bold",
-    marginBottom: 8,
-  },
-  input: {
-    backgroundColor: "#ededed",
-    color: "#0F172A",
-    borderRadius: 10,
-    paddingHorizontal: 14,
-    paddingVertical: 14,
-    marginBottom: 20,
-    fontSize: 14,
-    fontFamily: "Poppins_400Regular",
-    minHeight: 120,
-    textAlignVertical: "top",
-    borderWidth: 1,
-    borderColor: "#e6e6e6",
-  },
-  subtexto: {
-    fontSize: 12,
-    color: "#6B7280",
-    fontFamily: "Poppins_400Regular",
-    textAlign: "center",
-    lineHeight: 18,
-    marginBottom: 24,
-  },
-  botaoFinalizar: {
-    backgroundColor: "#ff005c",
-    paddingVertical: 14,
-    borderRadius: 12,
-    alignItems: "center",
-  },
-  textoBotaoFinalizar: {
-    color: "#fff",
-    fontSize: 15,
-    fontFamily: "Poppins_700Bold",
-  },
-});
+function makeStyles(colors) {
+  return StyleSheet.create({
+    container: {
+      flex: 1,
+      backgroundColor: colors.background,
+    },
+    scroll: {
+      paddingHorizontal: 24,
+      paddingTop: 50,
+      paddingBottom: 40,
+    },
+    header: {
+      flexDirection: "row",
+      alignItems: "center",
+      marginBottom: 20,
+    },
+    backButton: {
+      marginRight: 12,
+    },
+    backIcon: {
+      width: 36,
+      height: 36,
+      tintColor: colors.icon,
+    },
+    title: {
+      fontSize: 20,
+      color: colors.textTitle,
+      fontFamily: "Poppins_700Bold",
+    },
+    subtitle: {
+      fontSize: 13,
+      color: colors.textBody,
+      fontFamily: "Poppins_400Regular",
+      marginBottom: 20,
+      lineHeight: 20,
+    },
+    label: {
+      fontSize: 14,
+      color: colors.textPrimary,
+      fontFamily: "Poppins_700Bold",
+      marginBottom: 8,
+    },
+    input: {
+      backgroundColor: colors.input,
+      color: colors.textPrimary,
+      borderRadius: 10,
+      paddingHorizontal: 14,
+      paddingVertical: 14,
+      marginBottom: 20,
+      fontSize: 14,
+      fontFamily: "Poppins_400Regular",
+      minHeight: 120,
+      textAlignVertical: "top",
+      borderWidth: 1,
+      borderColor: colors.border,
+    },
+    subtexto: {
+      fontSize: 12,
+      color: colors.textSecondary,
+      fontFamily: "Poppins_400Regular",
+      textAlign: "center",
+      lineHeight: 18,
+      marginBottom: 24,
+    },
+    botaoFinalizar: {
+      backgroundColor: colors.accent,
+      paddingVertical: 14,
+      borderRadius: 12,
+      alignItems: "center",
+    },
+    textoBotaoFinalizar: {
+      color: colors.accentText,
+      fontSize: 15,
+      fontFamily: "Poppins_700Bold",
+    },
+  });
+}

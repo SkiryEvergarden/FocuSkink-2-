@@ -1,13 +1,13 @@
 import React, {
   createContext,
-  useCallback,
-  useState,
+  useContext,
   useMemo,
+  useState,
+  useCallback,
   useEffect,
 } from "react";
 import { doc, onSnapshot, setDoc } from "firebase/firestore";
 import { db } from "../firebaseConfig";
-
 import { useAchievements } from "./AchievementsContext";
 import { useAuth } from "./AuthContext";
 

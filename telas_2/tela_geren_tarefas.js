@@ -1,388 +1,322 @@
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import { Ionicons } from "@expo/vector-icons"
+import { useNavigation } from "@react-navigation/native"
+import { BlurView } from "expo-blur"
+import { LinearGradient } from "expo-linear-gradient"
+import { useEffect, useMemo, useRef, useState } from "react"
 import {
-  View,
-  Text,
-  TouchableOpacity,
-  StyleSheet,
-  ScrollView,
-  Image,
   Animated,
   Dimensions,
-  TextInput,
   FlatList,
+  Image,
+  Keyboard,
   KeyboardAvoidingView,
   Platform,
-  TouchableWithoutFeedback,
-  Keyboard,
   StyleSheet as RNStyleSheet,
-} from "react-native";
-import { BlurView } from "expo-blur";
-import { LinearGradient } from "expo-linear-gradient";
-import { useNavigation } from "@react-navigation/native";
-import { Ionicons } from "@expo/vector-icons";
-import { Calendar, LocaleConfig } from "react-native-calendars";
-import { useTarefas } from "../contexts/TarefasContext";
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  TouchableWithoutFeedback,
+  View
+} from "react-native"
+import { Calendar, LocaleConfig } from "react-native-calendars"
+import { useTarefas } from "../contexts/TarefasContext"
+import { useAppTheme } from "../contexts/ThemeContext"
 
-const { height } = Dimensions.get("window");
+const { height } = Dimensions.get("window")
 
 LocaleConfig.locales["pt"] = {
-  monthNames: [
-    "Janeiro",
-    "Fevereiro",
-    "Março",
-    "Abril",
-    "Maio",
-    "Junho",
-    "Julho",
-    "Agosto",
-    "Setembro",
-    "Outubro",
-    "Novembro",
-    "Dezembro",
-  ],
-  monthNamesShort: [
-    "Jan",
-    "Fev",
-    "Mar",
-    "Abr",
-    "Mai",
-    "Jun",
-    "Jul",
-    "Ago",
-    "Set",
-    "Out",
-    "Nov",
-    "Dez",
-  ],
-  dayNames: [
-    "Domingo",
-    "Segunda",
-    "Terça",
-    "Quarta",
-    "Quinta",
-    "Sexta",
-    "Sábado",
-  ],
-  dayNamesShort: ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"],
-  today: "Hoje",
-};
-LocaleConfig.defaultLocale = "pt";
+  monthNames: ["Janeiro","Fevereiro","Março","Abril","Maio","Junho","Julho","Agosto","Setembro","Outubro","Novembro","Dezembro"],
+  monthNamesShort: ["Jan","Fev","Mar","Abr","Mai","Jun","Jul","Ago","Set","Out","Nov","Dez"],
+  dayNames: ["Domingo","Segunda","Terça","Quarta","Quinta","Sexta","Sábado"],
+  dayNamesShort: ["Dom","Seg","Ter","Qua","Qui","Sex","Sáb"],
+  today: "Hoje"
+}
+LocaleConfig.defaultLocale = "pt"
 
 const startOfDay = (d) => {
-  const x = new Date(d);
-  x.setHours(0, 0, 0, 0);
-  return x;
-};
-const today = () => startOfDay(new Date());
+  const x = new Date(d)
+  x.setHours(0,0,0,0)
+  return x
+}
+const today = () => startOfDay(new Date())
 const parseDDMMYYYY = (s) => {
-  const [dd, mm, yyyy] = (s || "").split("/").map(Number);
-  if (!dd || !mm || !yyyy) return null;
-  const d = new Date(yyyy, mm - 1, dd);
-  if (d.getFullYear() !== yyyy || d.getMonth() !== mm - 1 || d.getDate() !== dd)
-    return null;
-  return startOfDay(d);
-};
+  const [dd,mm,yyyy] = (s||"").split("/").map(Number)
+  if(!dd||!mm||!yyyy) return null
+  const d = new Date(yyyy,mm-1,dd)
+  if(d.getFullYear()!==yyyy||d.getMonth()!==mm-1||d.getDate()!==dd) return null
+  return startOfDay(d)
+}
 const formatISO = (d) => {
-  const y = d.getFullYear();
-  const m = `${d.getMonth() + 1}`.padStart(2, "0");
-  const dd = `${d.getDate()}`.padStart(2, "0");
-  return `${y}-${m}-${dd}`;
-};
+  const y = d.getFullYear()
+  const m = `${d.getMonth()+1}`.padStart(2,"0")
+  const dd = `${d.getDate()}`.padStart(2,"0")
+  return `${y}-${m}-${dd}`
+}
 const daysDiffFromToday = (d) => {
-  const t0 = today().getTime();
-  const t1 = startOfDay(d).getTime();
-  return Math.floor((t1 - t0) / (1000 * 60 * 60 * 24));
-};
-const sameDay = (a, b) => startOfDay(a).getTime() === startOfDay(b).getTime();
+  const t0 = today().getTime()
+  const t1 = startOfDay(d).getTime()
+  return Math.floor((t1-t0)/(1000*60*60*24))
+}
+const sameDay = (a,b) => startOfDay(a).getTime() === startOfDay(b).getTime()
 const getNext7Days = () => {
-  const base = today();
-  return Array.from({ length: 7 }, (_, i) => {
-    const d = new Date(base);
-    d.setDate(base.getDate() + i);
-    return d;
-  });
-};
+  const base = today()
+  return Array.from({length:7},(_,i)=>{
+    const d = new Date(base)
+    d.setDate(base.getDate()+i)
+    return d
+  })
+}
 
-export default function Tela_Geren_Tarefas() {
-  const navigation = useNavigation();
-  const { tarefas, addTarefa, concluirTarefa, excluirTarefa } = useTarefas();
+export default function Tela_Geren_Tarefas(){
+  const navigation = useNavigation()
+  const { colors } = useAppTheme()
+  const { tarefas, addTarefa, concluirTarefa, excluirTarefa } = useTarefas()
 
-  const tabs = ["Atrasadas", "Diário", "Semanal", "Mensal", "Concluídas"];
-  const [selectedTab, setSelectedTab] = useState("Diário");
+  const tabs = ["Atrasadas","Diário","Semanal","Mensal","Concluídas"]
+  const [selectedTab,setSelectedTab] = useState("Diário")
 
-  const [weekDays, setWeekDays] = useState(getNext7Days());
-  const [weekSelectedDate, setWeekSelectedDate] = useState(weekDays[0]);
+  const [weekDays,setWeekDays] = useState(getNext7Days())
+  const [weekSelectedDate,setWeekSelectedDate] = useState(weekDays[0])
 
-  const [monthSelectedISO, setMonthSelectedISO] = useState(formatISO(today()));
+  const [monthSelectedISO,setMonthSelectedISO] = useState(formatISO(today()))
 
-  const [modalVisible, setModalVisible] = useState(false);
-  const modalOpacity = useRef(new Animated.Value(0)).current;
-  const modalTranslateY = useRef(new Animated.Value(50)).current;
+  const [modalVisible,setModalVisible] = useState(false)
+  const modalOpacity = useRef(new Animated.Value(0)).current
+  const modalTranslateY = useRef(new Animated.Value(50)).current
 
-  const [detailVisible, setDetailVisible] = useState(false);
-  const [selectedTask, setSelectedTask] = useState(null);
+  const [detailVisible,setDetailVisible] = useState(false)
+  const [selectedTask,setSelectedTask] = useState(null)
 
-  const [confirmVisible, setConfirmVisible] = useState(false);
-  const [deleteVisible, setDeleteVisible] = useState(false);
+  const [confirmVisible,setConfirmVisible] = useState(false)
+  const [deleteVisible,setDeleteVisible] = useState(false)
 
-  const [titulo, setTitulo] = useState("");
-  const [concluirAte, setConcluirAte] = useState("");
-  const [descricao, setDescricao] = useState("");
-  const [erroData, setErroData] = useState("");
+  const [loadingCreate,setLoadingCreate] = useState(false)
+  const [loadingConcluir,setLoadingConcluir] = useState(false)
+  const [loadingApagar,setLoadingApagar] = useState(false)
 
-  useEffect(() => {
-    const id = setInterval(() => {
-      const next = getNext7Days();
-      setWeekDays(next);
-      setWeekSelectedDate(next[0]);
-    }, 60 * 60 * 1000);
-    return () => clearInterval(id);
-  }, []);
+  const [titulo,setTitulo] = useState("")
+  const [concluirAte,setConcluirAte] = useState("")
+  const [descricao,setDescricao] = useState("")
+  const [erroData,setErroData] = useState("")
 
-  function formatarData(texto) {
-    const numeros = texto.replace(/\D/g, "");
-    let x = numeros;
-    if (numeros.length > 2 && numeros.length <= 4) {
-      x = `${numeros.slice(0, 2)}/${numeros.slice(2)}`;
-    } else if (numeros.length > 4) {
-      x = `${numeros.slice(0, 2)}/${numeros.slice(2, 4)}/${numeros.slice(
-        4,
-        8
-      )}`;
-    }
-    setConcluirAte(x);
-    if (erroData) validarData(x);
+  useEffect(()=>{
+    const id = setInterval(()=>{
+      const next = getNext7Days()
+      setWeekDays(next)
+      setWeekSelectedDate(next[0])
+    },60*60*1000)
+    return ()=>clearInterval(id)
+  },[])
+
+  function formatarData(texto){
+    const numeros = texto.replace(/\D/g,"")
+    let x = numeros
+    if(numeros.length>2 && numeros.length<=4) x = `${numeros.slice(0,2)}/${numeros.slice(2)}`
+    else if(numeros.length>4) x = `${numeros.slice(0,2)}/${numeros.slice(2,4)}/${numeros.slice(4,8)}`
+    setConcluirAte(x)
+    if(erroData) validarData(x)
   }
 
-  function validarData(texto) {
-    if (!/^\d{2}\/\d{2}\/\d{4}$/.test(texto)) {
-      setErroData("Use o formato DD/MM/AAAA.");
-      return false;
+  function validarData(texto){
+    if(!/^\d{2}\/\d{2}\/\d{4}$/.test(texto)){
+      setErroData("Use o formato DD/MM/AAAA.")
+      return false
     }
-    const d = parseDDMMYYYY(texto);
-    if (!d) {
-      setErroData("Data inválida.");
-      return false;
+    const d = parseDDMMYYYY(texto)
+    if(!d){
+      setErroData("Data inválida.")
+      return false
     }
-    const hoje = today();
-    const max = new Date(hoje);
-    max.setFullYear(max.getFullYear() + 3);
-    if (d < hoje) {
-      setErroData("A data não pode estar no passado.");
-      return false;
+    const hoje = today()
+    const max = new Date(hoje)
+    max.setFullYear(max.getFullYear()+3)
+    if(d<hoje){
+      setErroData("A data não pode estar no passado.")
+      return false
     }
-    if (d > max) {
-      setErroData("A data não pode ultrapassar 3 anos.");
-      return false;
+    if(d>max){
+      setErroData("A data não pode ultrapassar 3 anos.")
+      return false
     }
-    setErroData("");
-    return true;
+    setErroData("")
+    return true
   }
 
-  function openModal() {
-    setModalVisible(true);
+  function openModal(){
+    setModalVisible(true)
     Animated.parallel([
-      Animated.timing(modalOpacity, {
-        toValue: 1,
-        duration: 260,
-        useNativeDriver: true,
-      }),
-      Animated.timing(modalTranslateY, {
-        toValue: 0,
-        duration: 260,
-        useNativeDriver: true,
-      }),
-    ]).start();
+      Animated.timing(modalOpacity,{toValue:1,duration:260,useNativeDriver:true}),
+      Animated.timing(modalTranslateY,{toValue:0,duration:260,useNativeDriver:true})
+    ]).start()
   }
 
-  function closeModal() {
+  function closeModal(){
     Animated.parallel([
-      Animated.timing(modalOpacity, {
-        toValue: 0,
-        duration: 200,
-        useNativeDriver: true,
-      }),
-      Animated.timing(modalTranslateY, {
-        toValue: 50,
-        duration: 200,
-        useNativeDriver: true,
-      }),
-    ]).start(() => {
-      setModalVisible(false);
-      setTitulo("");
-      setConcluirAte("");
-      setDescricao("");
-      setErroData("");
-    });
+      Animated.timing(modalOpacity,{toValue:0,duration:200,useNativeDriver:true}),
+      Animated.timing(modalTranslateY,{toValue:50,duration:200,useNativeDriver:true})
+    ]).start(()=>{
+      setModalVisible(false)
+      setTitulo("")
+      setConcluirAte("")
+      setDescricao("")
+      setErroData("")
+    })
   }
 
-  async function handleCreateTask() {
-    const okTitulo = titulo.trim().length > 0;
-    const okData = validarData(concluirAte);
-    if (!okTitulo || !okData) return;
-
-    try {
-      await addTarefa({
-        titulo: titulo.slice(0, 100),
-        concluirAte,
-        descricao: descricao.slice(0, 300),
-      });
-      closeModal();
-    } catch (e) {
-      console.log("Erro ao criar tarefa:", e);
-    }
+  async function handleCreateTask(){
+    const okTitulo = titulo.trim().length>0
+    const okData = validarData(concluirAte)
+    if(!okTitulo||!okData||loadingCreate) return
+    setLoadingCreate(true)
+    await addTarefa({
+      titulo:titulo.slice(0,100),
+      concluirAte,
+      descricao:descricao.slice(0,300)
+    })
+    setLoadingCreate(false)
+    closeModal()
   }
 
-  const basePorAba = useMemo(() => {
-    const now = today();
-    if (selectedTab === "Concluídas") {
-      return tarefas.filter((t) => t.concluida);
-    }
-    if (selectedTab === "Atrasadas") {
-      return tarefas.filter((t) => {
-        if (t.concluida) return false;
-        const d = parseDDMMYYYY(t.concluirAte);
-        return d && d < now;
-      });
-    }
-    return tarefas.filter((t) => {
-      if (t.concluida) return false;
-      const d = parseDDMMYYYY(t.concluirAte);
-      if (!d) return false;
-      if (d < now) return false;
-      const diff = daysDiffFromToday(d);
-      if (selectedTab === "Diário") return diff === 0;
-      if (selectedTab === "Semanal") return diff >= 0 && diff <= 7;
-      if (selectedTab === "Mensal") return diff >= 0;
-      return false;
-    });
-  }, [tarefas, selectedTab]);
+  const basePorAba = useMemo(()=>{
+    const now = today()
+    if(selectedTab==="Concluídas") return tarefas.filter(t=>t.concluida)
+    if(selectedTab==="Atrasadas") return tarefas.filter(t=>{
+      if(t.concluida) return false
+      const d = parseDDMMYYYY(t.concluirAte)
+      return d && d<now
+    })
+    return tarefas.filter(t=>{
+      if(t.concluida) return false
+      const d = parseDDMMYYYY(t.concluirAte)
+      if(!d||d<now) return false
+      const diff = daysDiffFromToday(d)
+      if(selectedTab==="Diário") return diff===0
+      if(selectedTab==="Semanal") return diff>=0 && diff<=7
+      if(selectedTab==="Mensal") return diff>=0
+      return false
+    })
+  },[tarefas,selectedTab])
 
-  const tarefasFiltradas = useMemo(() => {
-    if (
-      selectedTab === "Diário" ||
-      selectedTab === "Concluídas" ||
-      selectedTab === "Atrasadas"
-    ) {
-      return basePorAba;
+  const tarefasFiltradas = useMemo(()=>{
+    if(["Diário","Concluídas","Atrasadas"].includes(selectedTab)) return basePorAba
+    if(selectedTab==="Semanal") return basePorAba.filter(t=>{
+      const d = parseDDMMYYYY(t.concluirAte)
+      return d && sameDay(d,weekSelectedDate)
+    })
+    if(selectedTab==="Mensal"){
+      const [y,m,d] = monthSelectedISO.split("-").map(Number)
+      const sel = startOfDay(new Date(y,m-1,d))
+      return basePorAba.filter(t=>{
+        const dt = parseDDMMYYYY(t.concluirAte)
+        return dt && sameDay(dt,sel)
+      })
     }
-    if (selectedTab === "Semanal") {
-      return basePorAba.filter((t) => {
-        const d = parseDDMMYYYY(t.concluirAte);
-        return d && sameDay(d, weekSelectedDate);
-      });
-    }
-    if (selectedTab === "Mensal") {
-      const [y, m, d] = monthSelectedISO.split("-").map(Number);
-      const sel = startOfDay(new Date(y, m - 1, d));
-      return basePorAba.filter((t) => {
-        const dt = parseDDMMYYYY(t.concluirAte);
-        return dt && sameDay(dt, sel);
-      });
-    }
-    return basePorAba;
-  }, [basePorAba, selectedTab, weekSelectedDate, monthSelectedISO]);
+    return basePorAba
+  },[basePorAba,selectedTab,weekSelectedDate,monthSelectedISO])
 
-  const calendarMarks = useMemo(() => {
-    const marks = {};
-    tarefas.forEach((t) => {
-      if (t.concluida) return;
-      const d = parseDDMMYYYY(t.concluirAte);
-      if (!d) return;
-      if (d >= today()) {
-        const key = formatISO(d);
-        marks[key] = {
-          ...(marks[key] || {}),
-          marked: true,
-          dotColor: "#ff005c",
-        };
+  const calendarMarks = useMemo(()=>{
+    const marks = {}
+    tarefas.forEach(t=>{
+      if(t.concluida) return
+      const d = parseDDMMYYYY(t.concluirAte)
+      if(!d) return
+      if(d>=today()){
+        const key = formatISO(d)
+        marks[key] = {marked:true,dotColor:"#ff005c"}
       }
-    });
+    })
     marks[monthSelectedISO] = {
-      ...(marks[monthSelectedISO] || {}),
-      selected: true,
-      selectedColor: "#ff005c",
-      marked: marks[monthSelectedISO]?.marked || false,
-    };
-    return marks;
-  }, [tarefas, monthSelectedISO]);
+      ...(marks[monthSelectedISO]||{}),
+      selected:true,
+      selectedColor:"#ff005c"
+    }
+    return marks
+  },[tarefas,monthSelectedISO])
 
-  const CardTarefa = ({ item }) => (
+  const CardTarefa = ({item})=>(
     <TouchableOpacity
       activeOpacity={0.9}
-      onPress={() => {
-        setSelectedTask(item);
-        setDetailVisible(true);
+      onPress={()=>{
+        setSelectedTask(item)
+        setDetailVisible(true)
       }}
     >
-      <View style={styles.card}>
+      <View style={[
+        styles.card,
+        {backgroundColor:colors.card,borderColor:colors.border}
+      ]}>
         <View style={styles.cardHeader}>
-          <Text style={styles.cardTitle} numberOfLines={1}>
+          <Text style={[styles.cardTitle,{color:colors.textPrimary}]} numberOfLines={1}>
             {item.titulo}
           </Text>
-          <View style={styles.badge}>
-            <Text style={styles.badgeText}>
-              {(() => {
-                if (item.concluida) return "Concluída";
-                const d = parseDDMMYYYY(item.concluirAte);
-                if (!d) return "";
-                if (d < today()) return "Atrasada";
-                const diff = daysDiffFromToday(d);
-                if (diff === 0) return "Diária";
-                if (diff > 0 && diff <= 7) return "Semanal";
-                return "Mensal";
+          <View style={[
+            styles.badge,
+            {backgroundColor:colors.input,borderColor:colors.border}
+          ]}>
+            <Text style={[styles.badgeText,{color:colors.textSecondary}]}>
+              {(()=>{
+                if(item.concluida) return "Concluída"
+                const d = parseDDMMYYYY(item.concluirAte)
+                if(!d) return ""
+                if(d<today()) return "Atrasada"
+                const diff = daysDiffFromToday(d)
+                if(diff===0) return "Diária"
+                if(diff>0&&diff<=7) return "Semanal"
+                return "Mensal"
               })()}
             </Text>
           </View>
         </View>
 
         {!!item.descricao && (
-          <Text style={styles.cardDesc} numberOfLines={3}>
+          <Text style={[styles.cardDesc,{color:colors.textSecondary}]} numberOfLines={3}>
             {item.descricao}
           </Text>
         )}
-        <Text style={styles.cardDue}>Até {item.concluirAte}</Text>
+        <Text style={[styles.cardDue,{color:colors.textMuted}]}>
+          Até {item.concluirAte}
+        </Text>
       </View>
     </TouchableOpacity>
-  );
+  )
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container,{backgroundColor:colors.background}]}>
+
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => navigation.goBack()}>
+        <TouchableOpacity onPress={()=>navigation.goBack()}>
           <Image
             source={require("../assets_icons/arrow_icon.png")}
-            style={styles.backIcon}
+            style={[styles.backIcon,{tintColor:colors.icon}]}
           />
         </TouchableOpacity>
 
-        <TouchableOpacity onPress={openModal} style={styles.addFab}>
-          <Ionicons name="add" size={26} color="#fff" />
+        <TouchableOpacity onPress={openModal} style={[styles.addFab,{backgroundColor:"#ff005c"}]}>
+          <Ionicons name="add" size={26} color="#fff"/>
         </TouchableOpacity>
       </View>
 
       <View style={styles.fixedTabs}>
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={styles.tabsRow}
-        >
-          {tabs.map((tab) => (
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.tabsRow}>
+          {tabs.map(tab=>(
             <TouchableOpacity
               key={tab}
               style={[
                 styles.tabChip,
-                selectedTab === tab && styles.tabChipActive,
+                {
+                  backgroundColor: selectedTab===tab ? colors.input : colors.card,
+                  borderColor: selectedTab===tab ? "#ff005c" : colors.border
+                }
               ]}
-              onPress={() => setSelectedTab(tab)}
+              onPress={()=>setSelectedTab(tab)}
               activeOpacity={0.85}
             >
-              <Text
-                style={[
-                  styles.tabText,
-                  selectedTab === tab && styles.tabTextActive,
-                ]}
-              >
+              <Text style={[
+                styles.tabText,
+                {color: selectedTab===tab ? "#ff005c" : colors.textSecondary}
+              ]}>
                 {tab}
               </Text>
             </TouchableOpacity>
@@ -390,65 +324,57 @@ export default function Tela_Geren_Tarefas() {
         </ScrollView>
       </View>
 
-      {selectedTab === "Semanal" && (
+      {selectedTab==="Semanal" && (
         <View style={styles.weekRow}>
-          {weekDays.map((d, i) => {
-            const isSelected = sameDay(d, weekSelectedDate);
-            const weekday = d
-              .toLocaleDateString("pt-BR", { weekday: "short" })
-              .replace(".", "");
+          {weekDays.map((d,i)=>{
+            const isSelected = sameDay(d,weekSelectedDate)
+            const weekday = d.toLocaleDateString("pt-BR",{weekday:"short"}).replace(".","")
             return (
-              <TouchableOpacity
-                key={i}
-                style={styles.dayWrapper}
-                onPress={() => setWeekSelectedDate(d)}
-                activeOpacity={0.9}
-              >
-                <Text style={styles.dayLabel}>{weekday}</Text>
-                <View
-                  style={[
-                    styles.dayBox,
-                    isSelected && {
-                      backgroundColor: "#ff005c",
-                      borderColor: "#ff005c",
-                    },
-                  ]}
-                >
-                  <Text
-                    style={[
-                      styles.dayText,
-                      isSelected && { color: "#ffffff" },
-                    ]}
-                  >
-                    {`${d.getDate()}`.padStart(2, "0")}
+              <TouchableOpacity key={i} style={styles.dayWrapper} onPress={()=>setWeekSelectedDate(d)} activeOpacity={0.9}>
+                <Text style={[styles.dayLabel,{color:colors.textMuted}]}>{weekday}</Text>
+
+                <View style={[
+                  styles.dayBox,
+                  {backgroundColor:colors.card,borderColor:colors.border},
+                  isSelected && {backgroundColor:"#ff005c",borderColor:"#ff005c"}
+                ]}>
+                  <Text style={[
+                    styles.dayText,
+                    {color: isSelected ? "#fff" : colors.textPrimary}
+                  ]}>
+                    {`${d.getDate()}`.padStart(2,"0")}
                   </Text>
                 </View>
-                {isSelected && <View style={styles.selectedLine} />}
+
+                {isSelected && <View style={styles.selectedLine}/>}
               </TouchableOpacity>
-            );
+            )
           })}
         </View>
       )}
 
-      {selectedTab === "Mensal" && (
-        <View style={styles.calendarCard}>
+      {selectedTab==="Mensal" && (
+        <View style={[
+          styles.calendarCard,
+          {backgroundColor:colors.card,borderColor:colors.border}
+        ]}>
           <Calendar
             monthFormat={"MMMM yyyy"}
-            onDayPress={(day) => setMonthSelectedISO(day.dateString)}
+            onDayPress={(day)=>setMonthSelectedISO(day.dateString)}
             markedDates={calendarMarks}
             hideExtraDays={false}
             enableSwipeMonths
             theme={{
-              backgroundColor: "#e4e4e4",
-              calendarBackground: "#e4e4e4",
-              dayTextColor: "#0F172A",
-              monthTextColor: "#0F172A",
-              textDisabledColor: "#9CA3AF",
-              arrowColor: "#ff005c",
-              todayTextColor: "#ff005c",
-              textSectionTitleColor: "#6B7280",
-              selectedDayBackgroundColor: "#ff005c",
-              selectedDayTextColor: "#ffffff",
+              backgroundColor:colors.card,
+              calendarBackground:colors.card,
+              dayTextColor:colors.textPrimary,
+              monthTextColor:colors.textPrimary,
+              textDisabledColor:colors.textMuted,
+              arrowColor:"#ff005c",
+              todayTextColor:"#ff005c",
+              textSectionTitleColor:colors.textMuted,
+              selectedDayBackgroundColor:"#ff005c",
+              selectedDayTextColor:"#ffffff"
             }}
           />
         </View>
@@ -456,35 +382,32 @@ export default function Tela_Geren_Tarefas() {
 
       <FlatList
         data={tarefasFiltradas}
-        keyExtractor={(i) => i.id}
-        renderItem={({ item }) => <CardTarefa item={item} />}
+        keyExtractor={(i)=>i.id}
+        renderItem={({item})=><CardTarefa item={item}/>}
         ListEmptyComponent={
-          <View style={styles.emptyBox}>
-            <Text style={styles.emptyText}>
+          <View style={[
+            styles.emptyBox,
+            {backgroundColor:colors.card,borderColor:colors.border}
+          ]}>
+            <Text style={[styles.emptyText,{color:colors.textMuted}]}>
               Nenhuma tarefa para este período.
             </Text>
           </View>
         }
-        contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: 110 }}
+        contentContainerStyle={{paddingHorizontal:16,paddingBottom:110}}
         showsVerticalScrollIndicator={false}
       />
 
       {modalVisible && (
-        <Animated.View
-          style={[styles.modalOverlay, { opacity: modalOpacity }]}
-        >
-          <BlurView
-            intensity={40}
-            tint="light"
-            style={RNStyleSheet.absoluteFill}
-          />
+        <Animated.View style={[styles.modalOverlay,{opacity:modalOpacity}]}>
+          <BlurView intensity={30} tint="dark" style={RNStyleSheet.absoluteFill}/>
           <TouchableWithoutFeedback onPress={closeModal}>
-            <View style={RNStyleSheet.absoluteFill} />
+            <View style={RNStyleSheet.absoluteFill}/>
           </TouchableWithoutFeedback>
 
           <KeyboardAvoidingView
-            behavior={Platform.OS === "ios" ? "padding" : "height"}
-            style={[styles.modalWrapper, { justifyContent: "flex-end" }]}
+            behavior={Platform.OS==="ios"?"padding":"height"}
+            style={[styles.modalWrapper,{justifyContent:"flex-end"}]}
             keyboardVerticalOffset={20}
           >
             <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
@@ -492,9 +415,11 @@ export default function Tela_Geren_Tarefas() {
                 contentContainerStyle={[
                   styles.modalContent,
                   {
-                    transform: [{ translateY: modalTranslateY }],
-                    marginBottom: height * 0.12,
-                  },
+                    transform:[{translateY:modalTranslateY}],
+                    backgroundColor:colors.card,
+                    borderColor:colors.border,
+                    marginBottom:height*0.12
+                  }
                 ]}
                 keyboardShouldPersistTaps="handled"
                 showsVerticalScrollIndicator={false}
@@ -503,59 +428,86 @@ export default function Tela_Geren_Tarefas() {
                   <TouchableOpacity onPress={closeModal}>
                     <Image
                       source={require("../assets_icons/arrow_icon.png")}
-                      style={styles.backIcon}
+                      style={[styles.backIcon,{tintColor:colors.icon}]}
                     />
                   </TouchableOpacity>
-                  <Text style={styles.modalTitle}>Criar nova tarefa</Text>
+
+                  <Text style={[styles.modalTitle,{color:colors.textPrimary}]}>
+                    Criar nova tarefa
+                  </Text>
                 </View>
 
                 <TextInput
                   placeholder="Título (até 100)"
-                  placeholderTextColor="#6B7280"
-                  style={styles.input}
+                  placeholderTextColor={colors.textMuted}
+                  style={[
+                    styles.input,
+                    {backgroundColor:colors.input,borderColor:colors.border,color:colors.textPrimary}
+                  ]}
                   value={titulo}
-                  onChangeText={(t) => setTitulo(t.slice(0, 100))}
+                  onChangeText={(t)=>setTitulo(t.slice(0,100))}
                 />
-                <Text style={styles.counter}>{titulo.length}/100</Text>
+                <Text style={[styles.counter,{color:colors.textMuted}]}>
+                  {titulo.length}/100
+                </Text>
 
                 <TextInput
                   placeholder="Data (DD/MM/AAAA)"
-                  placeholderTextColor="#6B7280"
+                  placeholderTextColor={colors.textMuted}
                   keyboardType="numeric"
-                  style={[styles.input, erroData ? styles.inputError : null]}
+                  style={[
+                    styles.input,
+                    erroData ? {borderColor:"#ff3b3b"} : {},
+                    {backgroundColor:colors.input,borderColor:colors.border,color:colors.textPrimary}
+                  ]}
                   value={concluirAte}
                   onChangeText={formatarData}
-                  onBlur={() => concluirAte && validarData(concluirAte)}
+                  onBlur={()=>concluirAte && validarData(concluirAte)}
                   maxLength={10}
                 />
                 {!!erroData && (
-                  <Text style={styles.errorText}>{erroData}</Text>
+                  <Text style={[styles.errorText,{color:"#ff3b3b"}]}>
+                    {erroData}
+                  </Text>
                 )}
 
                 <TextInput
                   placeholder="Descrição (até 300)"
-                  placeholderTextColor="#6B7280"
+                  placeholderTextColor={colors.textMuted}
                   multiline
                   numberOfLines={4}
-                  style={[styles.input, styles.textArea]}
+                  style={[
+                    styles.input,
+                    styles.textArea,
+                    {backgroundColor:colors.input,borderColor:colors.border,color:colors.textPrimary}
+                  ]}
                   value={descricao}
-                  onChangeText={(t) => setDescricao(t.slice(0, 300))}
+                  onChangeText={(t)=>setDescricao(t.slice(0,300))}
                 />
-                <Text style={styles.counter}>{descricao.length}/300</Text>
+                <Text style={[styles.counter,{color:colors.textMuted}]}>
+                  {descricao.length}/300
+                </Text>
 
                 <TouchableOpacity
-                  style={styles.createButton}
+                  style={[
+                    styles.createButton,
+                    loadingCreate && {opacity:0.5}
+                  ]}
+                  disabled={loadingCreate}
                   onPress={handleCreateTask}
                 >
                   <LinearGradient
-                    colors={["#ff2b6b", "#ff005c"]}
-                    start={{ x: 0, y: 0 }}
-                    end={{ x: 1, y: 0 }}
+                    colors={["#ff2b6b","#ff005c"]}
+                    start={{x:0,y:0}}
+                    end={{x:1,y:0}}
                     style={styles.createButtonInner}
                   >
-                    <Text style={styles.createButtonText}>Criar tarefa</Text>
+                    <Text style={styles.createButtonText}>
+                      {loadingCreate ? "Criando..." : "Criar tarefa"}
+                    </Text>
                   </LinearGradient>
                 </TouchableOpacity>
+
               </Animated.ScrollView>
             </TouchableWithoutFeedback>
           </KeyboardAvoidingView>
@@ -564,508 +516,568 @@ export default function Tela_Geren_Tarefas() {
 
       {detailVisible && selectedTask && (
         <View style={styles.detailOverlay}>
-          <BlurView
-            intensity={60}
-            tint="light"
-            style={RNStyleSheet.absoluteFill}
-          />
-          <TouchableWithoutFeedback onPress={() => setDetailVisible(false)}>
-            <View style={RNStyleSheet.absoluteFill} />
+          <BlurView intensity={30} tint="dark" style={RNStyleSheet.absoluteFill}/>
+          <TouchableWithoutFeedback onPress={()=>setDetailVisible(false)}>
+            <View style={RNStyleSheet.absoluteFill}/>
           </TouchableWithoutFeedback>
 
-          <View style={styles.detailBox}>
+          <View style={[
+            styles.detailBox,
+            {backgroundColor:colors.card,borderColor:colors.border}
+          ]}>
             {!selectedTask.concluida ? (
-              <View
-                style={{
-                  flexDirection: "row",
-                  alignItems: "center",
-                  marginBottom: 10,
-                }}
-              >
+              <View style={{flexDirection:"row",alignItems:"center",marginBottom:10}}>
                 <TouchableOpacity
-                  onPress={() => setDetailVisible(false)}
-                  style={styles.arrowBtn}
+                  onPress={()=>setDetailVisible(false)}
+                  style={[
+                    styles.arrowBtn,
+                    {backgroundColor:colors.input,borderColor:colors.border}
+                  ]}
                 >
-                  <Ionicons name="chevron-back" size={20} color="#ff005c" />
+                  <Ionicons name="chevron-back" size={20} color="#ff005c"/>
                 </TouchableOpacity>
-                <Text style={styles.detailTitle} numberOfLines={1}>
+                <Text style={[styles.detailTitle,{color:colors.textPrimary}]} numberOfLines={1}>
                   {selectedTask.titulo}
                 </Text>
               </View>
             ) : (
-              <Text style={styles.detailTitle}>{selectedTask.titulo}</Text>
+              <Text style={[styles.detailTitle,{color:colors.textPrimary}]}>
+                {selectedTask.titulo}
+              </Text>
             )}
 
             {!!selectedTask.descricao && (
-              <Text style={styles.detailDesc}>{selectedTask.descricao}</Text>
+              <Text style={[styles.detailDesc,{color:colors.textSecondary}]}>
+                {selectedTask.descricao}
+              </Text>
             )}
-            <Text style={styles.detailDate}>
+            <Text style={[styles.detailDate,{color:colors.textMuted}]}>
               Até {selectedTask.concluirAte}
             </Text>
 
-            {selectedTab !== "Concluídas" && !selectedTask.concluida && (
+            {selectedTab!=="Concluídas" && !selectedTask.concluida && (
               <>
                 <TouchableOpacity
-                  style={[styles.detailButton, { backgroundColor: "#ff005c" }]}
-                  onPress={() => setConfirmVisible(true)}
+                  style={[
+                    styles.detailButton,
+                    {backgroundColor:"#ff005c"},
+                    loadingConcluir && {opacity:0.5}
+                  ]}
+                  disabled={loadingConcluir}
+                  onPress={async()=>{
+                    if(loadingConcluir) return
+                    setLoadingConcluir(true)
+                    await concluirTarefa(selectedTask.id)
+                    setLoadingConcluir(false)
+                    setDetailVisible(false)
+                  }}
                 >
                   <Text style={styles.detailButtonTextPrimary}>
-                    Concluir
+                    {loadingConcluir ? "Concluindo..." : "Concluir"}
                   </Text>
                 </TouchableOpacity>
 
                 <TouchableOpacity
-                  style={[styles.detailButton, { backgroundColor: "#e3e3e3" }]}
-                  onPress={() => setDeleteVisible(true)}
+                  style={[
+                    styles.detailButton,
+                    {backgroundColor:colors.input},
+                    loadingApagar && {opacity:0.5}
+                  ]}
+                  disabled={loadingApagar}
+                  onPress={async()=>{
+                    setLoadingApagar(true)
+                    setDeleteVisible(true)
+                  }}
                 >
-                  <Text style={styles.detailButtonTextSecondary}>Apagar</Text>
+                  <Text style={[
+                    styles.detailButtonTextSecondary,
+                    {color:colors.textPrimary}
+                  ]}>
+                    {loadingApagar ? "Apagando..." : "Apagar"}
+                  </Text>
                 </TouchableOpacity>
               </>
             )}
 
             {selectedTask.concluida && (
-              <TouchableOpacity onPress={() => setDetailVisible(false)}>
-                <Text style={styles.detailClose}>Fechar</Text>
+              <TouchableOpacity onPress={()=>setDetailVisible(false)}>
+                <Text style={[styles.detailClose,{color:"#ff005c"}]}>Fechar</Text>
               </TouchableOpacity>
             )}
+
           </View>
         </View>
       )}
 
       {confirmVisible && (
         <View style={styles.confirmOverlay}>
-          <BlurView
-            intensity={70}
-            tint="light"
-            style={styles.confirmBlur}
-          />
-          <TouchableWithoutFeedback
-            onPress={() => setConfirmVisible(false)}
-          >
-            <View style={RNStyleSheet.absoluteFill} />
+          <BlurView intensity={30} tint="dark" style={styles.confirmBlur}/>
+          <TouchableWithoutFeedback onPress={()=>setConfirmVisible(false)}>
+            <View style={RNStyleSheet.absoluteFill}/>
           </TouchableWithoutFeedback>
 
-          <View style={styles.confirmBox}>
-            <Text style={styles.confirmTitle}>
+          <View style={[
+            styles.confirmBox,
+            {backgroundColor:colors.card,borderColor:colors.border}
+          ]}>
+            <Text style={[styles.confirmTitle,{color:colors.textPrimary}]}>
               Você deseja concluir a tarefa?
             </Text>
-            <Text style={styles.confirmText}>
-              Essa confirmação ajuda a manter seu progresso atualizado e os
-              relatórios mais precisos.
+            <Text style={[styles.confirmText,{color:colors.textSecondary}]}>
+              Essa confirmação ajuda a manter seu progresso atualizado e os relatórios mais precisos.
             </Text>
+
             <TouchableOpacity
               style={[
                 styles.confirmButton,
-                { backgroundColor: "#ff005c" },
+                {backgroundColor:"#ff005c"},
+                loadingConcluir && {opacity:0.5}
               ]}
-              onPress={async () => {
-                if (selectedTask) {
-                  try {
-                    await concluirTarefa(selectedTask.id);
-                  } catch (e) {
-                    console.log("Erro ao concluir tarefa:", e);
-                  }
-                }
-                setConfirmVisible(false);
-                setDetailVisible(false);
+              disabled={loadingConcluir}
+              onPress={async()=>{
+                setLoadingConcluir(true)
+                if(selectedTask) await concluirTarefa(selectedTask.id)
+                setLoadingConcluir(false)
+                setConfirmVisible(false)
+                setDetailVisible(false)
               }}
             >
               <Text style={styles.confirmButtonTextPrimary}>
-                Sim, desejo concluir
+                {loadingConcluir ? "Concluindo..." : "Sim, desejo concluir"}
               </Text>
             </TouchableOpacity>
+
             <TouchableOpacity
               style={[
                 styles.confirmButton,
-                { backgroundColor: "#e3e3e3" },
+                {backgroundColor:colors.input}
               ]}
-              onPress={() => setConfirmVisible(false)}
+              onPress={()=>setConfirmVisible(false)}
             >
-              <Text style={styles.confirmButtonTextSecondary}>
+              <Text style={[
+                styles.confirmButtonTextSecondary,
+                {color:colors.textPrimary}
+              ]}>
                 Não desejo concluir
               </Text>
             </TouchableOpacity>
+
           </View>
         </View>
       )}
 
       {deleteVisible && (
         <View style={styles.confirmOverlay}>
-          <BlurView
-            intensity={70}
-            tint="light"
-            style={styles.confirmBlur}
-          />
-          <TouchableWithoutFeedback
-            onPress={() => setDeleteVisible(false)}
-          >
-            <View style={RNStyleSheet.absoluteFill} />
+          <BlurView intensity={30} tint="dark" style={styles.confirmBlur}/>
+          <TouchableWithoutFeedback onPress={()=>setDeleteVisible(false)}>
+            <View style={RNStyleSheet.absoluteFill}/>
           </TouchableWithoutFeedback>
 
-          <View style={styles.confirmBox}>
-            <Text style={styles.confirmTitle}>Deseja apagar a tarefa?</Text>
-            <Text style={styles.confirmText}>
+          <View style={[
+            styles.confirmBox,
+            {backgroundColor:colors.card,borderColor:colors.border}
+          ]}>
+            <Text style={[styles.confirmTitle,{color:colors.textPrimary}]}>
+              Deseja apagar a tarefa?
+            </Text>
+            <Text style={[styles.confirmText,{color:colors.textSecondary}]}>
               Essa ação é permanente e removerá a tarefa da sua lista.
             </Text>
+
             <TouchableOpacity
               style={[
                 styles.confirmButton,
-                { backgroundColor: "#ff005c" },
+                {backgroundColor:"#ff005c"},
+                loadingApagar && {opacity:0.5}
               ]}
-              onPress={async () => {
-                if (selectedTask) {
-                  try {
-                    await excluirTarefa(selectedTask.id);
-                  } catch (e) {
-                    console.log("Erro ao apagar tarefa:", e);
-                  }
-                }
-                setDeleteVisible(false);
-                setDetailVisible(false);
+              disabled={loadingApagar}
+              onPress={async()=>{
+                if(selectedTask) await excluirTarefa(selectedTask.id)
+                setLoadingApagar(false)
+                setDeleteVisible(false)
+                setDetailVisible(false)
               }}
             >
               <Text style={styles.confirmButtonTextPrimary}>
-                Sim, desejo apagar
+                {loadingApagar ? "Apagando..." : "Sim, desejo apagar"}
               </Text>
             </TouchableOpacity>
+
             <TouchableOpacity
               style={[
                 styles.confirmButton,
-                { backgroundColor: "#e3e3e3" },
+                {backgroundColor:colors.input}
               ]}
-              onPress={() => setDeleteVisible(false)}
+              onPress={()=>{
+                setLoadingApagar(false)
+                setDeleteVisible(false)
+              }}
             >
-              <Text style={styles.confirmButtonTextSecondary}>
+              <Text style={[
+                styles.confirmButtonTextSecondary,
+                {color:colors.textPrimary}
+              ]}>
                 Não desejo apagar
               </Text>
             </TouchableOpacity>
+
           </View>
         </View>
       )}
+
     </View>
-  );
+  )
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#f6f6f6",
-    paddingTop: 50,
+    paddingTop: 50
   },
+
   header: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
     paddingHorizontal: 24,
-    marginBottom: 6,
+    marginBottom: 6
   },
-  backIcon: { width: 36, height: 36, tintColor: "#0F172A" },
+
+  backIcon: {
+    width: 36,
+    height: 36
+  },
+
   addFab: {
     width: 48,
     height: 48,
-    backgroundColor: "#ff005c",
     borderRadius: 24,
     alignItems: "center",
-    justifyContent: "center",
+    justifyContent: "center"
   },
+
   fixedTabs: {
     height: 52,
     justifyContent: "center",
     alignItems: "center",
-    marginBottom: 6,
+    marginBottom: 6
   },
+
   tabsRow: {
     flexDirection: "row",
     alignItems: "center",
-    paddingHorizontal: 16,
+    paddingHorizontal: 16
   },
+
   tabChip: {
     paddingVertical: 6,
     paddingHorizontal: 14,
     borderRadius: 12,
     marginRight: 10,
     borderWidth: 1,
-    borderColor: "#e6e6e6",
-    backgroundColor: "#ededed",
     justifyContent: "center",
-    alignItems: "center",
+    alignItems: "center"
   },
-  tabChipActive: {
-    borderColor: "#ff005c",
-  },
+
   tabText: {
     fontSize: 13,
-    color: "#374151",
     fontFamily: "Poppins_400Regular",
     textAlignVertical: "center",
-    textAlign: "center",
+    textAlign: "center"
   },
-  tabTextActive: {
-    color: "#ff005c",
-    fontFamily: "Poppins_700Bold",
-  },
+
   weekRow: {
     flexDirection: "row",
     justifyContent: "space-between",
     marginHorizontal: 12,
     marginTop: 6,
-    marginBottom: 4,
+    marginBottom: 4
   },
-  dayWrapper: { alignItems: "center", flex: 1 },
+
+  dayWrapper: {
+    alignItems: "center",
+    flex: 1
+  },
+
   dayLabel: {
     fontSize: 11,
-    color: "#6B7280",
     fontFamily: "Poppins_400Regular",
     marginBottom: 4,
-    textTransform: "capitalize",
+    textTransform: "capitalize"
   },
+
   dayBox: {
     width: 46,
     height: 46,
     borderRadius: 12,
-    backgroundColor: "#e6e6e6",
     borderWidth: 1,
-    borderColor: "#d2d2d2",
     justifyContent: "center",
-    alignItems: "center",
+    alignItems: "center"
   },
+
   dayText: {
     fontSize: 15,
-    fontFamily: "Poppins_700Bold",
-    color: "#0F172A",
+    fontFamily: "Poppins_700Bold"
   },
+
   selectedLine: {
     width: 28,
     height: 3,
     backgroundColor: "#ff005c",
     borderRadius: 2,
-    marginTop: 4,
+    marginTop: 4
   },
+
   calendarCard: {
-    backgroundColor: "#e4e4e4",
     borderRadius: 16,
     padding: 10,
     marginHorizontal: 16,
     marginTop: 6,
     marginBottom: 6,
-    borderWidth: 1,
-    borderColor: "#e6e6e6",
+    borderWidth: 1
   },
+
   emptyBox: {
-    backgroundColor: "#ededed",
     borderRadius: 12,
     padding: 18,
     alignItems: "center",
     marginHorizontal: 16,
     marginTop: 10,
-    borderWidth: 1,
-    borderColor: "#e6e6e6",
+    borderWidth: 1
   },
-  emptyText: { color: "#6B7280", fontFamily: "Poppins_400Regular" },
+
+  emptyText: {
+    fontFamily: "Poppins_400Regular"
+  },
+
   card: {
-    backgroundColor: "#ededed",
     borderRadius: 16,
     padding: 16,
     marginTop: 12,
     marginHorizontal: 16,
-    borderWidth: 1,
-    borderColor: "#cfcfcf",
+    borderWidth: 1
   },
+
   cardHeader: {
     flexDirection: "row",
     alignItems: "center",
-    justifyContent: "space-between",
+    justifyContent: "space-between"
   },
+
   cardTitle: {
-    color: "#0F172A",
     fontSize: 16,
     fontFamily: "Poppins_700Bold",
-    maxWidth: "70%",
+    maxWidth: "70%"
   },
+
   badge: {
-    backgroundColor: "#e6e6e6",
     paddingHorizontal: 10,
     paddingVertical: 4,
     borderRadius: 10,
+    borderWidth: 1
   },
+
   badgeText: {
-    color: "#374151",
     fontSize: 12,
-    fontFamily: "Poppins_400Regular",
+    fontFamily: "Poppins_400Regular"
   },
+
   cardDesc: {
-    color: "#4B5563",
     fontSize: 13,
     fontFamily: "Poppins_400Regular",
-    marginTop: 10,
+    marginTop: 10
   },
+
   cardDue: {
-    color: "#6B7280",
     fontSize: 12,
     fontFamily: "Poppins_400Regular",
-    marginTop: 8,
+    marginTop: 8
   },
+
   modalOverlay: {
     ...RNStyleSheet.absoluteFillObject,
-    justifyContent: "flex-end",
+    justifyContent: "flex-end"
   },
-  modalWrapper: { width: "100%", justifyContent: "flex-end" },
+
+  modalWrapper: {
+    width: "100%",
+    justifyContent: "flex-end"
+  },
+
   modalContent: {
     width: "100%",
-    backgroundColor: "#ffffff",
     borderTopLeftRadius: 18,
     borderTopRightRadius: 18,
     paddingHorizontal: 20,
     paddingTop: 18,
     paddingBottom: 24,
     minHeight: height * 0.75,
-    borderTopWidth: 1,
-    borderColor: "#e6e6e6",
+    borderTopWidth: 1
   },
-  modalHeader: { flexDirection: "row", alignItems: "center", marginBottom: 12 },
+
+  modalHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: 12
+  },
+
   modalTitle: {
-    color: "#0F172A",
     fontSize: 18,
     fontFamily: "Poppins_700Bold",
-    marginLeft: 10,
+    marginLeft: 10
   },
+
   input: {
-    backgroundColor: "#ededed",
     borderRadius: 12,
     paddingHorizontal: 14,
     paddingVertical: 12,
-    color: "#0F172A",
     fontFamily: "Poppins_400Regular",
     marginBottom: 6,
-    borderWidth: 1,
-    borderColor: "#cfcfcf",
+    borderWidth: 1
   },
-  inputError: { borderColor: "#ff3b3b" },
-  textArea: { height: 110, textAlignVertical: "top" },
+
+  textArea: {
+    height: 110,
+    textAlignVertical: "top"
+  },
+
   counter: {
     alignSelf: "flex-end",
-    color: "#6B7280",
     fontSize: 12,
-    marginBottom: 8,
+    marginBottom: 8
   },
-  errorText: { color: "#b91c1c", fontSize: 13, marginBottom: 6 },
-  createButton: { marginTop: 10, alignSelf: "stretch" },
+
+  errorText: {
+    fontSize: 13,
+    marginBottom: 6
+  },
+
+  createButton: {
+    marginTop: 10,
+    alignSelf: "stretch"
+  },
+
   createButtonInner: {
     paddingVertical: 14,
     borderRadius: 12,
     alignItems: "center",
-    justifyContent: "center",
+    justifyContent: "center"
   },
+
   createButtonText: {
     color: "#ffffff",
     fontSize: 16,
-    fontFamily: "Poppins_700Bold",
+    fontFamily: "Poppins_700Bold"
   },
+
   detailOverlay: {
     ...RNStyleSheet.absoluteFillObject,
     justifyContent: "center",
-    alignItems: "center",
+    alignItems: "center"
   },
+
   detailBox: {
-    backgroundColor: "#ededed",
     padding: 24,
     borderRadius: 14,
     width: "85%",
-    borderWidth: 1,
-    borderColor: "#e6e6e6",
+    borderWidth: 1
   },
+
   arrowBtn: {
     width: 34,
     height: 34,
     borderRadius: 12,
-    backgroundColor: "#e6e6e6",
     alignItems: "center",
     justifyContent: "center",
     marginRight: 8,
+    borderWidth: 1
   },
+
   detailTitle: {
-    color: "#0F172A",
     fontSize: 18,
     fontFamily: "Poppins_700Bold",
-    flexShrink: 1,
+    flexShrink: 1
   },
+
   detailDesc: {
-    color: "#374151",
     fontSize: 14,
     fontFamily: "Poppins_400Regular",
-    marginBottom: 10,
+    marginBottom: 10
   },
+
   detailDate: {
-    color: "#6B7280",
     fontSize: 13,
     fontFamily: "Poppins_400Regular",
-    marginBottom: 18,
+    marginBottom: 18
   },
+
   detailButton: {
     borderRadius: 10,
     paddingVertical: 12,
     alignItems: "center",
-    marginBottom: 8,
+    marginBottom: 8
   },
+
   detailButtonTextPrimary: {
     color: "#ffffff",
-    fontFamily: "Poppins_700Bold",
+    fontFamily: "Poppins_700Bold"
   },
+
   detailButtonTextSecondary: {
-    color: "#0F172A",
-    fontFamily: "Poppins_700Bold",
+    fontFamily: "Poppins_700Bold"
   },
+
   detailClose: {
-    color: "#ff005c",
     fontFamily: "Poppins_700Bold",
     textAlign: "center",
-    marginTop: 10,
+    marginTop: 10
   },
+
   confirmOverlay: {
     ...RNStyleSheet.absoluteFillObject,
     justifyContent: "center",
-    alignItems: "center",
+    alignItems: "center"
   },
-  confirmBlur: { ...RNStyleSheet.absoluteFillObject },
+
+  confirmBlur: {
+    ...RNStyleSheet.absoluteFillObject
+  },
+
   confirmBox: {
-    backgroundColor: "#ededed",
     borderRadius: 20,
     padding: 24,
     width: "85%",
-    borderWidth: 1,
-    borderColor: "#e6e6e6",
-    shadowColor: "#000",
-    shadowOpacity: 0.12,
-    shadowRadius: 10,
-    elevation: 6,
+    borderWidth: 1
   },
+
   confirmTitle: {
-    color: "#0F172A",
     fontSize: 17,
     fontFamily: "Poppins_700Bold",
-    marginBottom: 6,
+    marginBottom: 6
   },
+
   confirmText: {
-    color: "#4B5563",
     fontSize: 13,
     fontFamily: "Poppins_400Regular",
-    marginBottom: 18,
+    marginBottom: 18
   },
+
   confirmButton: {
     alignItems: "center",
     justifyContent: "center",
     borderRadius: 12,
     paddingVertical: 12,
-    marginTop: 8,
+    marginTop: 8
   },
+
   confirmButtonTextPrimary: {
     color: "#ffffff",
     fontSize: 14,
-    fontFamily: "Poppins_700Bold",
+    fontFamily: "Poppins_700Bold"
   },
+
   confirmButtonTextSecondary: {
-    color: "#0F172A",
     fontSize: 14,
-    fontFamily: "Poppins_700Bold",
-  },
-});
+    fontFamily: "Poppins_700Bold"
+  }
+})

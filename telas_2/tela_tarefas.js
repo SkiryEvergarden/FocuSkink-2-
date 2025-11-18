@@ -1,34 +1,41 @@
-import React, { useEffect, useMemo, useRef, useState, useCallback } from "react";
 import {
-  View,
-  Text,
-  StyleSheet,
-  TouchableOpacity,
-  Image,
-  Dimensions,
-  Modal,
-  ScrollView,
-  TextInput,
-  StyleSheet as RNStyleSheet,
-  FlatList,
-  AppState,
-  InteractionManager,
-} from "react-native";
-import { LinearGradient } from "expo-linear-gradient";
-import { BlurView } from "expo-blur";
-import { useNavigation } from "@react-navigation/native";
-import {
-  useFonts,
   Inter_400Regular,
   Inter_500Medium,
   Inter_600SemiBold,
+  useFonts,
 } from "@expo-google-fonts/inter";
 import { Ionicons } from "@expo/vector-icons";
-import Svg, { Circle } from "react-native-svg";
+import { useNavigation } from "@react-navigation/native";
 import { Audio } from "expo-av";
+import { BlurView } from "expo-blur";
+import { LinearGradient } from "expo-linear-gradient";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
+import {
+  AppState,
+  Dimensions,
+  FlatList,
+  Image,
+  InteractionManager,
+  Modal,
+  StyleSheet as RNStyleSheet,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
+} from "react-native";
 import { Calendar, LocaleConfig } from "react-native-calendars";
-import { useTarefas } from "../contexts/TarefasContext";
+import Svg, { Circle } from "react-native-svg";
 import { useSessao } from "../contexts/SessaoContext";
+import { useTarefas } from "../contexts/TarefasContext";
+import { useAppTheme } from "../contexts/ThemeContext";
 import { PLAYLISTS } from "../data/playlist";
 
 const { width } = Dimensions.get("window");
@@ -131,38 +138,50 @@ const formatISO = (d) => {
 };
 const sameDay = (a, b) => startOfDay(a).getTime() === startOfDay(b).getTime();
 
-function Chip({ text, highlight }) {
+function Chip({ text, highlight, styles, colors }) {
   return (
     <View
       style={[
         styles.chip,
-        highlight && { borderColor: "#ff005c", borderWidth: 1 },
+        highlight && { borderColor: colors.accent, borderWidth: 1 },
       ]}
     >
-      <Text style={[styles.chipText, highlight && { color: "#0F172A" }]}>
+      <Text
+        style={[
+          styles.chipText,
+          highlight && { color: colors.textPrimary },
+        ]}
+      >
         {text}
       </Text>
     </View>
   );
 }
-function Checkbox({ checked }) {
+function Checkbox({ checked, styles, colors }) {
   return (
     <View
       style={[
         styles.checkbox,
-        checked && { backgroundColor: "#ff005c", borderColor: "#ff005c" },
+        checked && {
+          backgroundColor: colors.accent,
+          borderColor: colors.accent,
+        },
       ]}
     >
       {checked ? <Ionicons name="checkmark" size={16} color="#fff" /> : null}
     </View>
   );
 }
-function Toggle({ value, onPress }) {
+function Toggle({ value, onPress, styles, colors }) {
   return (
     <TouchableOpacity
       activeOpacity={0.9}
       onPress={onPress}
-      style={[styles.toggle, value ? styles.toggleOn : styles.toggleOff]}
+      style={[
+        styles.toggle,
+        value ? styles.toggleOn : styles.toggleOff,
+        !value && { backgroundColor: colors.border },
+      ]}
     >
       <View
         style={[
@@ -174,7 +193,7 @@ function Toggle({ value, onPress }) {
   );
 }
 
-function ChipsMetodo({ metodo, setMetodo }) {
+function ChipsMetodo({ metodo, setMetodo, styles, colors }) {
   const opts = ["Pomodoro", "Deepwork"];
   return (
     <View style={styles.chipsMetodoRow}>
@@ -208,6 +227,8 @@ function CardTarefaSessao({
   setTarefaSel,
   usarTarefa,
   setUsarTarefa,
+  styles,
+  colors,
 }) {
   const selected = usarTarefa && tarefaSel?.id === item.id;
   return (
@@ -233,6 +254,8 @@ function CardTarefaSessao({
               setTarefaSel(item);
             }
           }}
+          styles={styles}
+          colors={colors}
         />
       </View>
 
@@ -255,6 +278,8 @@ function PlayerBar({
   isPlaying,
   onLoop,
   loop,
+  styles,
+  colors,
 }) {
   if (!track) return null;
   const dur = parseDur(track.duracao) || 1;
@@ -273,26 +298,33 @@ function PlayerBar({
         </View>
         <View style={styles.playerControls}>
           <TouchableOpacity onPress={onPrev} style={styles.ctrlBtn}>
-            <Ionicons name="play-back" size={18} color="#0F172A" />
+            <Ionicons name="play-back" size={18} color={colors.textPrimary} />
           </TouchableOpacity>
           <TouchableOpacity onPress={onPlayPause} style={styles.ctrlBtn}>
             <Ionicons
               name={isPlaying ? "pause" : "play"}
               size={18}
-              color="#0F172A"
+              color={colors.textPrimary}
             />
           </TouchableOpacity>
           <TouchableOpacity onPress={onNext} style={styles.ctrlBtn}>
-            <Ionicons name="play-forward" size={18} color="#0F172A" />
+            <Ionicons
+              name="play-forward"
+              size={18}
+              color={colors.textPrimary}
+            />
           </TouchableOpacity>
           <TouchableOpacity
             onPress={onLoop}
-            style={[styles.ctrlBtn, loop && { backgroundColor: "#ff005c" }]}
+            style={[
+              styles.ctrlBtn,
+              loop && { backgroundColor: colors.accent },
+            ]}
           >
             <Ionicons
               name="repeat"
               size={14}
-              color={loop ? "#fff" : "#0F172A"}
+              color={loop ? "#fff" : colors.textPrimary}
             />
           </TouchableOpacity>
         </View>
@@ -310,10 +342,20 @@ function StepModal({
   onBack,
   onNext,
   isCycle = false,
+  styles,
+  colors,
+  isDark,
 }) {
   return (
     <View style={styles.fullOverlay}>
-      <BlurView intensity={60} tint="light" style={RNStyleSheet.absoluteFill} />
+      <BlurView
+        intensity={60}
+        tint={isDark ? "dark" : "light"}
+        style={[
+          RNStyleSheet.absoluteFill,
+          isDark && { backgroundColor: "rgba(0,0,0,0.6)" },
+        ]}
+      />
       <View style={styles.fullCard}>
         <View style={styles.modalHeaderRow}>
           <TouchableOpacity onPress={onBack} style={styles.backBtn}>
@@ -329,7 +371,11 @@ function StepModal({
                 ? `${current} ciclo${current === 1 ? "" : "s"}`
                 : `${String(current).padStart(2, "0")}:00 min`}
             </Text>
-            <Ionicons name="chevron-down" size={16} color="#0F172A" />
+            <Ionicons
+              name="chevron-down"
+              size={16}
+              color={colors.textPrimary}
+            />
           </View>
         </View>
 
@@ -346,20 +392,24 @@ function StepModal({
                   ? `${v} ciclo${v === 1 ? "" : "s"}`
                   : `${String(v).padStart(2, "0")}:00 min`}
               </Text>
-              <Checkbox checked={current === v} />
+              <Checkbox checked={current === v} styles={styles} colors={colors} />
             </TouchableOpacity>
           ))}
           <View style={{ height: 80 }} />
         </ScrollView>
 
-        <TouchableOpacity style={styles.ctaWrap} onPress={onNext} activeOpacity={0.9}>
+        <TouchableOpacity
+          style={styles.ctaWrap}
+          onPress={onNext}
+          activeOpacity={0.9}
+        >
           <LinearGradient
             colors={["#ff2b6b", "#ff005c"]}
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 0 }}
             style={styles.ctaInner}
           >
-            <Text style={styles.ctaTxt}> {btnText} </Text>
+            <Text style={styles.ctaTxt}>{btnText}</Text>
             <Ionicons name="chevron-forward" color="#fff" size={18} />
           </LinearGradient>
         </TouchableOpacity>
@@ -370,6 +420,8 @@ function StepModal({
 
 export default function TelaTarefas() {
   const navigation = useNavigation();
+  const { colors, isDark } = useAppTheme();
+  const styles = useMemo(() => createStyles(colors, isDark), [colors, isDark]);
   const { tarefas, concluirTarefa } = useTarefas();
   const sessaoCtx = useSessao();
   const { sessao } = sessaoCtx;
@@ -756,17 +808,21 @@ export default function TelaTarefas() {
       if (!d) return;
       if (d >= today()) {
         const key = formatISO(d);
-        marks[key] = { ...(marks[key] || {}), marked: true, dotColor: "#ff005c" };
+        marks[key] = {
+          ...(marks[key] || {}),
+          marked: true,
+          dotColor: colors.accent,
+        };
       }
     });
     marks[selDateISO] = {
       ...(marks[selDateISO] || {}),
       selected: true,
-      selectedColor: "#ff005c",
+      selectedColor: colors.accent,
       marked: marks[selDateISO]?.marked || false,
     };
     return marks;
-  }, [tarefasAtivas, selDateISO]);
+  }, [tarefasAtivas, selDateISO, colors]);
 
   const tarefasDoDia = useMemo(() => {
     const [y, m, d] = selDateISO.split("-").map(Number);
@@ -778,7 +834,7 @@ export default function TelaTarefas() {
   }, [tarefasAtivas, selDateISO]);
 
   if (!fontsLoaded) {
-    return <View style={{ flex: 1, backgroundColor: "#f6f6f6" }} />;
+    return <View style={{ flex: 1, backgroundColor: colors.background }} />;
   }
 
   return (
@@ -804,7 +860,7 @@ export default function TelaTarefas() {
               cx={SIZE / 2}
               cy={SIZE / 2}
               r={R}
-              stroke="#e6e6e6"
+              stroke={colors.border}
               strokeWidth={STROKE}
               fill="none"
             />
@@ -824,7 +880,9 @@ export default function TelaTarefas() {
 
           <View style={styles.timerCenter}>
             <Text
-              style={sessao.isRunning ? styles.timerBig : styles.timerBigPlaceholder}
+              style={
+                sessao.isRunning ? styles.timerBig : styles.timerBigPlaceholder
+              }
             >
               {tempoFmt}
             </Text>
@@ -843,7 +901,7 @@ export default function TelaTarefas() {
         ) : (
           <View style={styles.sessionBtns}>
             <TouchableOpacity
-              style={[styles.sessBtn, { backgroundColor: "#ff005c" }]}
+              style={[styles.sessBtn, { backgroundColor: colors.accent }]}
               onPress={() => setShowFinishConfirm(true)}
             >
               <Text style={[styles.sessBtnTxt, { color: "#fff" }]}>
@@ -851,13 +909,16 @@ export default function TelaTarefas() {
               </Text>
             </TouchableOpacity>
             <TouchableOpacity
-              style={[styles.sessBtn, { backgroundColor: "#e3e3e3" }]}
+              style={[
+                styles.sessBtn,
+                { backgroundColor: isDark ? colors.border : "#e3e3e3" },
+              ]}
               onPress={() =>
                 sessaoCtx.pauseResumeSession &&
                 sessaoCtx.pauseResumeSession()
               }
             >
-              <Text style={[styles.sessBtnTxt, { color: "#0F172A" }]}>
+              <Text style={[styles.sessBtnTxt, { color: colors.textPrimary }]}>
                 {sessao.paused ? "Retomar" : "Pausar"}
               </Text>
             </TouchableOpacity>
@@ -868,7 +929,13 @@ export default function TelaTarefas() {
       {chips.length > 0 && (
         <View style={styles.chipsRow}>
           {chips.map((c, i) => (
-            <Chip key={i} text={c.label} highlight={c.highlight} />
+            <Chip
+              key={i}
+              text={c.label}
+              highlight={c.highlight}
+              styles={styles}
+              colors={colors}
+            />
           ))}
         </View>
       )}
@@ -909,7 +976,11 @@ export default function TelaTarefas() {
 
       {mostrarNavbar && (
         <LinearGradient
-          colors={["rgba(246,246,246,0)", "rgba(246,246,246,0.95)"]}
+          colors={
+            isDark
+              ? ["rgba(0,0,0,0)", "rgba(0,0,0,1)"]
+              : ["rgba(246,246,246,0)", "rgba(246,246,246,0.95)"]
+          }
           start={{ x: 0, y: 0 }}
           end={{ x: 0, y: 1 }}
           style={styles.gradientWrapper}
@@ -917,8 +988,11 @@ export default function TelaTarefas() {
         >
           <BlurView
             intensity={25}
-            tint="light"
-            style={styles.navbarWrapper}
+            tint={isDark ? "dark" : "light"}
+            style={[
+              styles.navbarWrapper,
+              isDark && { backgroundColor: "rgba(0,0,0,0.6)" },
+            ]}
             pointerEvents="box-none"
           >
             <View style={styles.navbar}>
@@ -956,14 +1030,14 @@ export default function TelaTarefas() {
                     source={item.icon}
                     style={[
                       styles.navIcon,
-                      selected === item.name && { tintColor: "#ff005c" },
+                      selected === item.name && { tintColor: colors.accent },
                     ]}
                     resizeMode="contain"
                   />
                   <Text
                     style={[
                       styles.navText,
-                      selected === item.name && { color: "#ff005c" },
+                      selected === item.name && { color: colors.accent },
                     ]}
                   >
                     {item.name}
@@ -985,6 +1059,8 @@ export default function TelaTarefas() {
           onPlayPause={togglePlay}
           onLoop={toggleLoop}
           loop={loop}
+          styles={styles}
+          colors={colors}
         />
       )}
 
@@ -992,8 +1068,11 @@ export default function TelaTarefas() {
         <View style={styles.fullOverlay}>
           <BlurView
             intensity={60}
-            tint="light"
-            style={RNStyleSheet.absoluteFill}
+            tint={isDark ? "dark" : "light"}
+            style={[
+              RNStyleSheet.absoluteFill,
+              isDark && { backgroundColor: "rgba(0,0,0,0.6)" },
+            ]}
           />
           <View style={styles.fullCard}>
             <View style={styles.modalHeaderRow}>
@@ -1022,7 +1101,7 @@ export default function TelaTarefas() {
                     style={{
                       width: 28,
                       height: 28,
-                      tintColor: "#0F172A",
+                      tintColor: colors.textPrimary,
                     }}
                   />
                 </TouchableOpacity>
@@ -1041,7 +1120,12 @@ export default function TelaTarefas() {
             >
               <View style={styles.fieldGroup}>
                 <Text style={styles.fieldLabelGroup}>Método de estudo</Text>
-                <ChipsMetodo metodo={metodo} setMetodo={setMetodo} />
+                <ChipsMetodo
+                  metodo={metodo}
+                  setMetodo={setMetodo}
+                  styles={styles}
+                  colors={colors}
+                />
               </View>
 
               <View style={styles.fieldGroup}>
@@ -1053,7 +1137,7 @@ export default function TelaTarefas() {
                     maxLength={100}
                     onChangeText={setNome}
                     placeholder="Minha sessão..."
-                    placeholderTextColor="#9CA3AF"
+                    placeholderTextColor={colors.textSecondary}
                   />
                 </View>
               </View>
@@ -1068,7 +1152,11 @@ export default function TelaTarefas() {
                   <Text style={styles.valueTxt} numberOfLines={1}>
                     {usarTarefa && tarefaSel ? tarefaSel.titulo : "Nenhuma"}
                   </Text>
-                  <Ionicons name="chevron-down" size={16} color="#0F172A" />
+                  <Ionicons
+                    name="chevron-down"
+                    size={16}
+                    color={colors.textPrimary}
+                  />
                 </TouchableOpacity>
               </View>
 
@@ -1086,7 +1174,11 @@ export default function TelaTarefas() {
                       ? `${plMarcadas.length} playlist(s)`
                       : "Nenhuma"}
                   </Text>
-                  <Ionicons name="chevron-down" size={16} color="#0F172A" />
+                  <Ionicons
+                    name="chevron-down"
+                    size={16}
+                    color={colors.textPrimary}
+                  />
                 </TouchableOpacity>
               </View>
 
@@ -1095,6 +1187,8 @@ export default function TelaTarefas() {
                 <Toggle
                   value={focusMode}
                   onPress={() => setFocusMode((p) => !p)}
+                  styles={styles}
+                  colors={colors}
                 />
               </View>
             </ScrollView>
@@ -1126,8 +1220,11 @@ export default function TelaTarefas() {
         <View style={styles.fullOverlay}>
           <BlurView
             intensity={60}
-            tint="light"
-            style={RNStyleSheet.absoluteFill}
+            tint={isDark ? "dark" : "light"}
+            style={[
+              RNStyleSheet.absoluteFill,
+              isDark && { backgroundColor: "rgba(0,0,0,0.6)" },
+            ]}
           />
           <View style={styles.fullCard}>
             <View style={styles.modalHeaderRow}>
@@ -1149,6 +1246,8 @@ export default function TelaTarefas() {
                   setUsarTarefa(next);
                   if (!next) setTarefaSel(null);
                 }}
+                styles={styles}
+                colors={colors}
               />
             </View>
 
@@ -1162,15 +1261,15 @@ export default function TelaTarefas() {
                     hideExtraDays={false}
                     enableSwipeMonths
                     theme={{
-                      backgroundColor: "#e4e4e4",
-                      calendarBackground: "#e4e4e4",
-                      dayTextColor: "#0F172A",
-                      monthTextColor: "#0F172A",
-                      textDisabledColor: "#9CA3AF",
-                      arrowColor: "#ff005c",
-                      todayTextColor: "#ff005c",
-                      textSectionTitleColor: "#6B7280",
-                      selectedDayBackgroundColor: "#ff005c",
+                      backgroundColor: colors.card,
+                      calendarBackground: colors.card,
+                      dayTextColor: colors.textPrimary,
+                      monthTextColor: colors.textPrimary,
+                      textDisabledColor: colors.textSecondary,
+                      arrowColor: colors.accent,
+                      todayTextColor: colors.accent,
+                      textSectionTitleColor: colors.textSecondary,
+                      selectedDayBackgroundColor: colors.accent,
                       selectedDayTextColor: "#ffffff",
                     }}
                   />
@@ -1186,6 +1285,8 @@ export default function TelaTarefas() {
                       setTarefaSel={setTarefaSel}
                       usarTarefa={usarTarefa}
                       setUsarTarefa={setUsarTarefa}
+                      styles={styles}
+                      colors={colors}
                     />
                   )}
                   ListEmptyComponent={
@@ -1233,8 +1334,11 @@ export default function TelaTarefas() {
         <View style={styles.fullOverlay}>
           <BlurView
             intensity={60}
-            tint="light"
-            style={RNStyleSheet.absoluteFill}
+            tint={isDark ? "dark" : "light"}
+            style={[
+              RNStyleSheet.absoluteFill,
+              isDark && { backgroundColor: "rgba(0,0,0,0.6)" },
+            ]}
           />
           <View style={styles.fullCard}>
             <View style={styles.modalHeaderRow}>
@@ -1249,7 +1353,11 @@ export default function TelaTarefas() {
 
             <View style={styles.selectorHeaderBox}>
               <Text style={styles.selectorHeaderTxt}>Playlists disponíveis</Text>
-              <Ionicons name="chevron-down" size={16} color="#0F172A" />
+              <Ionicons
+                name="chevron-down"
+                size={16}
+                color={colors.textPrimary}
+              />
             </View>
 
             <ScrollView
@@ -1311,7 +1419,11 @@ export default function TelaTarefas() {
                           });
                         }}
                       >
-                        <Checkbox checked={checked} />
+                        <Checkbox
+                          checked={checked}
+                          styles={styles}
+                          colors={colors}
+                        />
                       </TouchableOpacity>
                     </View>
                   </View>
@@ -1343,8 +1455,11 @@ export default function TelaTarefas() {
         <View style={styles.fullOverlay}>
           <BlurView
             intensity={60}
-            tint="light"
-            style={RNStyleSheet.absoluteFill}
+            tint={isDark ? "dark" : "light"}
+            style={[
+              RNStyleSheet.absoluteFill,
+              isDark && { backgroundColor: "rgba(0,0,0,0.6)" },
+            ]}
           />
           <View style={styles.fullCard}>
             <View style={styles.modalHeaderRow}>
@@ -1357,14 +1472,18 @@ export default function TelaTarefas() {
               >
                 <Ionicons name="chevron-back" size={20} color="#fff" />
               </TouchableOpacity>
-              <Text style={styles.modalHeaderTitle}>Selecionar música</Text>
             </View>
+            <Text style={styles.modalHeaderTitle}>Selecionar música</Text>
 
             <View style={styles.selectorHeaderBox}>
               <Text style={styles.selectorHeaderTxt}>
                 {playlistOpen ? playlistOpen.nome : "Playlist"}
               </Text>
-              <Ionicons name="chevron-down" size={16} color="#0F172A" />
+              <Ionicons
+                name="chevron-down"
+                size={16}
+                color={colors.textPrimary}
+              />
             </View>
 
             <ScrollView
@@ -1412,7 +1531,11 @@ export default function TelaTarefas() {
                           });
                         }}
                       >
-                        <Checkbox checked={checked} />
+                        <Checkbox
+                          checked={checked}
+                          styles={styles}
+                          colors={colors}
+                        />
                       </TouchableOpacity>
                     </View>
                   </View>
@@ -1458,6 +1581,9 @@ export default function TelaTarefas() {
             setShowPomoStudy(false);
             setShowPomoRest(true);
           }}
+          styles={styles}
+          colors={colors}
+          isDark={isDark}
         />
       </Modal>
 
@@ -1476,6 +1602,9 @@ export default function TelaTarefas() {
             setShowPomoRest(false);
             setShowPomoCycles(true);
           }}
+          styles={styles}
+          colors={colors}
+          isDark={isDark}
         />
       </Modal>
 
@@ -1492,6 +1621,9 @@ export default function TelaTarefas() {
             setShowPomoRest(true);
           }}
           onNext={iniciarPomodoro}
+          styles={styles}
+          colors={colors}
+          isDark={isDark}
         />
       </Modal>
 
@@ -1499,8 +1631,11 @@ export default function TelaTarefas() {
         <View style={styles.fullOverlay}>
           <BlurView
             intensity={60}
-            tint="light"
-            style={RNStyleSheet.absoluteFill}
+            tint={isDark ? "dark" : "light"}
+            style={[
+              RNStyleSheet.absoluteFill,
+              isDark && { backgroundColor: "rgba(0,0,0,0.6)" },
+            ]}
           />
           <View style={styles.fullCard}>
             <View style={styles.modalHeaderRow}>
@@ -1521,7 +1656,11 @@ export default function TelaTarefas() {
             </Text>
             <View style={styles.selectorHeaderBox}>
               <Text style={styles.selectorHeaderTxt}>{dHoras}h</Text>
-              <Ionicons name="chevron-down" size={16} color="#0F172A" />
+              <Ionicons
+                name="chevron-down"
+                size={16}
+                color={colors.textPrimary}
+              />
             </View>
             <ScrollView
               style={{ maxHeight: 160, marginBottom: 6 }}
@@ -1534,7 +1673,11 @@ export default function TelaTarefas() {
                   onPress={() => setDHoras(h)}
                 >
                   <Text style={styles.rowTxt}>{h}h</Text>
-                  <Checkbox checked={dHoras === h} />
+                  <Checkbox
+                    checked={dHoras === h}
+                    styles={styles}
+                    colors={colors}
+                  />
                 </TouchableOpacity>
               ))}
             </ScrollView>
@@ -1542,7 +1685,11 @@ export default function TelaTarefas() {
             <Text style={styles.fieldLabelGroup}>Minutos</Text>
             <View style={styles.selectorHeaderBox}>
               <Text style={styles.selectorHeaderTxt}>{dMin}m</Text>
-              <Ionicons name="chevron-down" size={16} color="#0F172A" />
+              <Ionicons
+                name="chevron-down"
+                size={16}
+                color={colors.textPrimary}
+              />
             </View>
             <ScrollView
               style={{ maxHeight: 220, marginBottom: 6 }}
@@ -1555,7 +1702,11 @@ export default function TelaTarefas() {
                   onPress={() => setDMin(m)}
                 >
                   <Text style={styles.rowTxt}>{m}m</Text>
-                  <Checkbox checked={dMin === m} />
+                  <Checkbox
+                    checked={dMin === m}
+                    styles={styles}
+                    colors={colors}
+                  />
                 </TouchableOpacity>
               ))}
             </ScrollView>
@@ -1581,13 +1732,15 @@ export default function TelaTarefas() {
         </View>
       </Modal>
 
-      {/* MODAL DE INFORMAÇÕES DA SESSÃO (ATUALIZADO) */}
       <Modal transparent visible={showSessionInfo} animationType="fade">
         <View style={styles.infoOverlay}>
           <BlurView
             intensity={80}
-            tint="light"
-            style={RNStyleSheet.absoluteFill}
+            tint={isDark ? "dark" : "light"}
+            style={[
+              RNStyleSheet.absoluteFill,
+              isDark && { backgroundColor: "rgba(0,0,0,0.6)" },
+            ]}
           />
           <View style={styles.infoCard}>
             <Text style={styles.infoTitle}>Como funciona a sessão?</Text>
@@ -1642,8 +1795,11 @@ export default function TelaTarefas() {
         <View style={styles.centerOverlay}>
           <BlurView
             intensity={90}
-            tint="light"
-            style={RNStyleSheet.absoluteFill}
+            tint={isDark ? "dark" : "light"}
+            style={[
+              RNStyleSheet.absoluteFill,
+              isDark && { backgroundColor: "rgba(0,0,0,0.6)" },
+            ]}
           />
           <View style={styles.confirmBox}>
             <Text style={styles.confirmTitle}>
@@ -1655,7 +1811,7 @@ export default function TelaTarefas() {
             </Text>
 
             <TouchableOpacity
-              style={[styles.confirmBtn, { backgroundColor: "#ff005c" }]}
+              style={[styles.confirmBtn, { backgroundColor: colors.accent }]}
               onPress={finalizarSessao}
             >
               <Text style={[styles.confirmTxt, { color: "#fff" }]}>
@@ -1665,13 +1821,20 @@ export default function TelaTarefas() {
             </TouchableOpacity>
 
             <TouchableOpacity
-              style={[styles.confirmBtn, { backgroundColor: "#e3e3e3" }]}
+              style={[
+                styles.confirmBtn,
+                { backgroundColor: isDark ? colors.border : "#e3e3e3" },
+              ]}
               onPress={() => setShowFinishConfirm(false)}
             >
-              <Text style={[styles.confirmTxt, { color: "#0F172A" }]}>
+              <Text style={[styles.confirmTxt, { color: colors.textPrimary }]}>
                 Não desejo finalizar
               </Text>
-              <Ionicons name="close" size={16} color="#0F172A" />
+              <Ionicons
+                name="close"
+                size={16}
+                color={colors.textPrimary}
+              />
             </TouchableOpacity>
           </View>
         </View>
@@ -1681,8 +1844,11 @@ export default function TelaTarefas() {
         <View style={styles.centerOverlay}>
           <BlurView
             intensity={90}
-            tint="light"
-            style={RNStyleSheet.absoluteFill}
+            tint={isDark ? "dark" : "light"}
+            style={[
+              RNStyleSheet.absoluteFill,
+              isDark && { backgroundColor: "rgba(0,0,0,0.6)" },
+            ]}
           />
           <View style={styles.confirmBox}>
             <View style={{ flexDirection: "row" }}>
@@ -1709,7 +1875,7 @@ export default function TelaTarefas() {
             </Text>
 
             <TouchableOpacity
-              style={[styles.confirmBtn, { backgroundColor: "#ff005c" }]}
+              style={[styles.confirmBtn, { backgroundColor: colors.accent }]}
               onPress={confirmarTerminouTarefa}
             >
               <Text style={[styles.confirmTxt, { color: "#fff" }]}>
@@ -1719,13 +1885,20 @@ export default function TelaTarefas() {
             </TouchableOpacity>
 
             <TouchableOpacity
-              style={[styles.confirmBtn, { backgroundColor: "#e3e3e3" }]}
+              style={[
+                styles.confirmBtn,
+                { backgroundColor: isDark ? colors.border : "#e3e3e3" },
+              ]}
               onPress={naoTerminouTarefa}
             >
-              <Text style={[styles.confirmTxt, { color: "#0F172A" }]}>
+              <Text style={[styles.confirmTxt, { color: colors.textPrimary }]}>
                 Eu não terminei
               </Text>
-              <Ionicons name="close" size={16} color="#0F172A" />
+              <Ionicons
+                name="close"
+                size={16}
+                color={colors.textPrimary}
+              />
             </TouchableOpacity>
           </View>
         </View>
@@ -1734,584 +1907,610 @@ export default function TelaTarefas() {
   );
 }
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: "#f6f6f6",
-    alignItems: "center",
-    justifyContent: "flex-start",
-  },
+const createStyles = (colors, isDark) =>
+  StyleSheet.create({
+    container: {
+      flex: 1,
+      backgroundColor: colors.background,
+      alignItems: "center",
+      justifyContent: "flex-start",
+    },
 
-  header: {
-    width: "100%",
-    marginTop: 25,
-    flexDirection: "row",
-    justifyContent: "center",
-    alignItems: "center",
-    paddingHorizontal: 20,
-  },
-  logo: { width: 170, height: 75, resizeMode: "contain" },
+    header: {
+      width: "100%",
+      marginTop: 25,
+      flexDirection: "row",
+      justifyContent: "center",
+      alignItems: "center",
+      paddingHorizontal: 20,
+    },
+    logo: { width: 170, height: 75, resizeMode: "contain" },
 
-  timerWrapper: { marginTop: 30, alignItems: "center", justifyContent: "center" },
-  timerCenter: {
-    width: 160,
-    height: 160,
-    borderRadius: 80,
-    backgroundColor: "#ffffff",
-    borderWidth: 1,
-    borderColor: "#e6e6e6",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  timerBig: { fontSize: 32, color: "#0F172A", fontFamily: "Inter_600SemiBold" },
-  timerBigPlaceholder: {
-    fontSize: 32,
-    color: "#9CA3AF",
-    fontFamily: "Inter_600SemiBold",
-  },
-  timerSub: {
-    fontSize: 14,
-    color: "#6B7280",
-    fontFamily: "Inter_400Regular",
-    marginTop: 6,
-  },
+    timerWrapper: {
+      marginTop: 30,
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    timerCenter: {
+      width: 160,
+      height: 160,
+      borderRadius: 80,
+      backgroundColor: colors.card,
+      borderWidth: 1,
+      borderColor: colors.border,
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    timerBig: {
+      fontSize: 32,
+      color: colors.textPrimary,
+      fontFamily: "Inter_600SemiBold",
+    },
+    timerBigPlaceholder: {
+      fontSize: 32,
+      color: colors.textSecondary,
+      fontFamily: "Inter_600SemiBold",
+    },
+    timerSub: {
+      fontSize: 14,
+      color: colors.textSecondary,
+      fontFamily: "Inter_400Regular",
+      marginTop: 6,
+    },
 
-  startBtn: {
-    backgroundColor: "#ff005c",
-    paddingVertical: 12,
-    paddingHorizontal: 40,
-    borderRadius: 10,
-    marginTop: 20,
-  },
-  startTxt: { color: "#fff", fontSize: 16, fontFamily: "Inter_600SemiBold" },
+    startBtn: {
+      backgroundColor: colors.accent,
+      paddingVertical: 12,
+      paddingHorizontal: 40,
+      borderRadius: 10,
+      marginTop: 20,
+    },
+    startTxt: {
+      color: "#fff",
+      fontSize: 16,
+      fontFamily: "Inter_600SemiBold",
+    },
 
-  sessionBtns: {
-    flexDirection: "row",
-    justifyContent: "center",
-    alignItems: "center",
-    marginTop: 20,
-  },
-  sessBtn: {
-    borderRadius: 10,
-    paddingVertical: 12,
-    paddingHorizontal: 20,
-    minWidth: 110,
-    alignItems: "center",
-    marginHorizontal: 5,
-  },
-  sessBtnTxt: { fontSize: 15, fontFamily: "Inter_600SemiBold" },
+    sessionBtns: {
+      flexDirection: "row",
+      justifyContent: "center",
+      alignItems: "center",
+      marginTop: 20,
+    },
+    sessBtn: {
+      borderRadius: 10,
+      paddingVertical: 12,
+      paddingHorizontal: 20,
+      minWidth: 110,
+      alignItems: "center",
+      marginHorizontal: 5,
+    },
+    sessBtnTxt: { fontSize: 15, fontFamily: "Inter_600SemiBold" },
 
-  chipsRow: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    justifyContent: "center",
-    marginTop: 20,
-    paddingHorizontal: 20,
-  },
-  chip: {
-    backgroundColor: "#e6e6e6",
-    borderRadius: 8,
-    paddingHorizontal: 10,
-    paddingVertical: 8,
-    marginHorizontal: 4,
-    marginBottom: 8,
-    borderWidth: 1,
-    borderColor: "#d2d2d2",
-  },
-  chipText: {
-    color: "#374151",
-    fontSize: 13,
-    fontFamily: "Inter_400Regular",
-  },
+    chipsRow: {
+      flexDirection: "row",
+      flexWrap: "wrap",
+      justifyContent: "center",
+      marginTop: 20,
+      paddingHorizontal: 20,
+    },
+    chip: {
+      backgroundColor: colors.border,
+      borderRadius: 8,
+      paddingHorizontal: 10,
+      paddingVertical: 8,
+      marginHorizontal: 4,
+      marginBottom: 8,
+      borderWidth: 1,
+      borderColor: colors.border,
+    },
+    chipText: {
+      color: colors.textSecondary,
+      fontSize: 13,
+      fontFamily: "Inter_400Regular",
+    },
 
-  chipsMetodoRow: { flexDirection: "row", gap: 8 },
-  metodoChip: {
-    paddingVertical: 8,
-    paddingHorizontal: 14,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: "#e6e6e6",
-    backgroundColor: "#ffffff",
-  },
-  metodoChipActive: { borderColor: "#ff005c", backgroundColor: "#ffffff" },
-  metodoChipText: {
-    color: "#6B7280",
-    fontFamily: "Inter_500Medium",
-    fontSize: 13,
-  },
-  metodoChipTextActive: {
-    color: "#ff005c",
-    fontFamily: "Inter_600SemiBold",
-  },
+    chipsMetodoRow: { flexDirection: "row", gap: 8 },
+    metodoChip: {
+      paddingVertical: 8,
+      paddingHorizontal: 14,
+      borderRadius: 12,
+      borderWidth: 1,
+      borderColor: colors.border,
+      backgroundColor: colors.card,
+    },
+    metodoChipActive: { borderColor: colors.accent, backgroundColor: colors.card },
+    metodoChipText: {
+      color: colors.textSecondary,
+      fontFamily: "Inter_500Medium",
+      fontSize: 13,
+    },
+    metodoChipTextActive: {
+      color: colors.accent,
+      fontFamily: "Inter_600SemiBold",
+    },
 
-  taskCard: {
-    width: "90%",
-    backgroundColor: "#ffffff",
-    borderRadius: 12,
-    padding: 16,
-    marginTop: 24,
-    borderWidth: 1,
-    borderColor: "#e6e6e6",
-  },
-  taskHeader: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    marginBottom: 8,
-  },
-  taskTitle: {
-    color: "#0F172A",
-    fontSize: 16,
-    fontFamily: "Inter_600SemiBold",
-    maxWidth: "70%",
-  },
-  taskPill: {
-    backgroundColor: "#e6e6e6",
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 6,
-  },
-  taskPillTxt: {
-    color: "#374151",
-    fontSize: 12,
-    fontFamily: "Inter_400Regular",
-  },
-  taskDesc: {
-    color: "#4B5563",
-    fontSize: 13,
-    fontFamily: "Inter_400Regular",
-    lineHeight: 18,
-  },
+    taskCard: {
+      width: "90%",
+      backgroundColor: colors.card,
+      borderRadius: 12,
+      padding: 16,
+      marginTop: 24,
+      borderWidth: 1,
+      borderColor: colors.border,
+    },
+    taskHeader: {
+      flexDirection: "row",
+      justifyContent: "space-between",
+      alignItems: "center",
+      marginBottom: 8,
+    },
+    taskTitle: {
+      color: colors.textPrimary,
+      fontSize: 16,
+      fontFamily: "Inter_600SemiBold",
+      maxWidth: "70%",
+    },
+    taskPill: {
+      backgroundColor: colors.border,
+      paddingHorizontal: 8,
+      paddingVertical: 4,
+      borderRadius: 6,
+    },
+    taskPillTxt: {
+      color: colors.textSecondary,
+      fontSize: 12,
+      fontFamily: "Inter_400Regular",
+    },
+    taskDesc: {
+      color: colors.textSecondary,
+      fontSize: 13,
+      fontFamily: "Inter_400Regular",
+      lineHeight: 18,
+    },
 
-  manageBtn: {
-    marginTop: 30,
-    width: "85%",
-    backgroundColor: "#ededed",
-    padding: 16,
-    borderRadius: 12,
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    marginBottom: 100,
-    borderWidth: 1,
-    borderColor: "#D0D0D0",
-  },
-  manageTxt: {
-    color: "#0F172A",
-    fontSize: 16,
-    fontFamily: "Inter_500Medium",
-  },
-  manageIcon: { width: 22, height: 22, tintColor: "#0F172A" },
+    manageBtn: {
+      marginTop: 30,
+      width: "85%",
+      backgroundColor: isDark ? colors.card : colors.border,
+      padding: 16,
+      borderRadius: 12,
+      flexDirection: "row",
+      justifyContent: "space-between",
+      alignItems: "center",
+      marginBottom: 100,
+      borderWidth: 1,
+      borderColor: colors.border,
+    },
+    manageTxt: {
+      color: colors.textPrimary,
+      fontSize: 16,
+      fontFamily: "Inter_500Medium",
+    },
+    manageIcon: {
+      width: 22,
+      height: 22,
+      tintColor: colors.textPrimary,
+    },
 
-  gradientWrapper: {
-    position: "absolute",
-    bottom: 0,
-    left: 0,
-    right: 0,
-    height: 200,
-  },
-  navbarWrapper: {
-    position: "absolute",
-    bottom: 50,
-    left: 0,
-    right: 0,
-    paddingHorizontal: 20,
-  },
-  navbar: {
-    backgroundColor: "#ffffff",
-    flexDirection: "row",
-    justifyContent: "space-around",
-    alignItems: "center",
-    borderRadius: 20,
-    paddingVertical: 14,
-    paddingHorizontal: 10,
-    borderWidth: 1,
-    borderColor: "#e6e6e6",
-  },
-  navItem: { alignItems: "center", justifyContent: "center", flex: 1 },
-  navIcon: { width: 28, height: 28, tintColor: "#0F172A", marginBottom: 6 },
-  navText: {
-    fontSize: 13,
-    color: "#0F172A",
-    fontFamily: "Inter_400Regular",
-  },
+    gradientWrapper: {
+      position: "absolute",
+      bottom: 0,
+      left: 0,
+      right: 0,
+      height: 200,
+    },
+    navbarWrapper: {
+      position: "absolute",
+      bottom: 50,
+      left: 0,
+      right: 0,
+      paddingHorizontal: 20,
+      borderRadius: 20,
+    },
+    navbar: {
+      backgroundColor: colors.card,
+      flexDirection: "row",
+      justifyContent: "space-around",
+      alignItems: "center",
+      borderRadius: 20,
+      paddingVertical: 14,
+      paddingHorizontal: 10,
+      borderWidth: 1,
+      borderColor: colors.border,
+    },
+    navItem: { alignItems: "center", justifyContent: "center", flex: 1 },
+    navIcon: {
+      width: 28,
+      height: 28,
+      tintColor: colors.textPrimary,
+      marginBottom: 6,
+    },
+    navText: {
+      fontSize: 13,
+      color: colors.textPrimary,
+      fontFamily: "Inter_400Regular",
+    },
 
-  checkbox: {
-    width: 22,
-    height: 22,
-    borderRadius: 4,
-    borderWidth: 1,
-    borderColor: "#0F172A",
-    alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: "#ffffff",
-  },
+    checkbox: {
+      width: 22,
+      height: 22,
+      borderRadius: 4,
+      borderWidth: 1,
+      borderColor: colors.textPrimary,
+      alignItems: "center",
+      justifyContent: "center",
+      backgroundColor: colors.card,
+    },
 
-  toggle: {
-    width: 42,
-    height: 24,
-    borderRadius: 12,
-    padding: 3,
-    justifyContent: "center",
-  },
-  toggleOn: { backgroundColor: "#ff005c" },
-  toggleOff: { backgroundColor: "#d2d2d2" },
-  toggleDot: {
-    width: 18,
-    height: 18,
-    borderRadius: 9,
-    backgroundColor: "#fff",
-  },
+    toggle: {
+      width: 42,
+      height: 24,
+      borderRadius: 12,
+      padding: 3,
+      justifyContent: "center",
+    },
+    toggleOn: { backgroundColor: colors.accent },
+    toggleOff: { backgroundColor: colors.border },
+    toggleDot: {
+      width: 18,
+      height: 18,
+      borderRadius: 9,
+      backgroundColor: "#fff",
+    },
 
-  fullOverlay: {
-    ...RNStyleSheet.absoluteFillObject,
-    justifyContent: "flex-start",
-    alignItems: "center",
-    paddingTop: 0,
-  },
-  fullCard: {
-    flex: 1,
-    width: "100%",
-    backgroundColor: "#ffffff",
-    borderRadius: 0,
-    paddingHorizontal: 20,
-    paddingTop: 50,
-    paddingBottom: 20,
-    borderTopWidth: 1,
-    borderColor: "#e6e6e6",
-  },
+    fullOverlay: {
+      ...RNStyleSheet.absoluteFillObject,
+      justifyContent: "flex-start",
+      alignItems: "center",
+      paddingTop: 0,
+    },
+    fullCard: {
+      flex: 1,
+      width: "100%",
+      backgroundColor: colors.card,
+      borderRadius: 0,
+      paddingHorizontal: 20,
+      paddingTop: 50,
+      paddingBottom: 20,
+      borderTopWidth: 1,
+      borderColor: colors.border,
+    },
 
-  modalHeaderRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    marginBottom: 14,
-  },
-  backBtn: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: "#ff005c",
-    alignItems: "center",
-    justifyContent: "center",
-    marginRight: 10,
-  },
-  modalHeaderTitle: {
-    color: "#0F172A",
-    fontSize: 16,
-    fontFamily: "Inter_600SemiBold",
-  },
+    modalHeaderRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      marginBottom: 14,
+    },
+    backBtn: {
+      width: 36,
+      height: 36,
+      borderRadius: 18,
+      backgroundColor: colors.accent,
+      alignItems: "center",
+      justifyContent: "center",
+      marginRight: 10,
+    },
+    modalHeaderTitle: {
+      color: colors.textPrimary,
+      fontSize: 16,
+      fontFamily: "Inter_600SemiBold",
+    },
 
-  modalIntroText: {
-    color: "#6B7280",
-    fontSize: 13,
-    fontFamily: "Inter_400Regular",
-    lineHeight: 18,
-    marginBottom: 20,
-  },
+    modalIntroText: {
+      color: colors.textSecondary,
+      fontSize: 13,
+      fontFamily: "Inter_400Regular",
+      lineHeight: 18,
+      marginBottom: 20,
+    },
 
-  fieldGroup: { marginBottom: 18 },
-  fieldLabelGroup: {
-    color: "#0F172A",
-    fontSize: 14,
-    fontFamily: "Inter_500Medium",
-    marginBottom: 8,
-  },
-  valueBoxFull: {
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: "#ffffff",
-    borderRadius: 6,
-    paddingHorizontal: 10,
-    paddingVertical: 12,
-    justifyContent: "space-between",
-    borderWidth: 1,
-    borderColor: "#e6e6e6",
-  },
+    fieldGroup: { marginBottom: 18 },
+    fieldLabelGroup: {
+      color: colors.textPrimary,
+      fontSize: 14,
+      fontFamily: "Inter_500Medium",
+      marginBottom: 8,
+    },
+    valueBoxFull: {
+      flexDirection: "row",
+      alignItems: "center",
+      backgroundColor: colors.card,
+      borderRadius: 6,
+      paddingHorizontal: 10,
+      paddingVertical: 12,
+      justifyContent: "space-between",
+      borderWidth: 1,
+      borderColor: colors.border,
+    },
 
-  fieldGroupRow: {
-    marginBottom: 18,
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-  },
+    fieldGroupRow: {
+      marginBottom: 18,
+      flexDirection: "row",
+      justifyContent: "space-between",
+      alignItems: "center",
+    },
 
-  valueTxt: {
-    color: "#0F172A",
-    fontSize: 13,
-    fontFamily: "Inter_400Regular",
-    maxWidth: "85%",
-  },
-  input: {
-    flex: 1,
-    color: "#0F172A",
-    fontSize: 13,
-    fontFamily: "Inter_400Regular",
-    paddingVertical: 0,
-  },
+    valueTxt: {
+      color: colors.textPrimary,
+      fontSize: 13,
+      fontFamily: "Inter_400Regular",
+      maxWidth: "85%",
+    },
+    input: {
+      flex: 1,
+      color: colors.textPrimary,
+      fontSize: 13,
+      fontFamily: "Inter_400Regular",
+      paddingVertical: 0,
+    },
 
-  selectorHeaderBox: {
-    borderColor: "#ff005c",
-    borderWidth: 1,
-    borderRadius: 8,
-    paddingHorizontal: 12,
-    paddingVertical: 12,
-    marginBottom: 14,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    backgroundColor: "#ffffff",
-  },
-  selectorHeaderTxt: {
-    color: "#0F172A",
-    fontSize: 14,
-    fontFamily: "Inter_500Medium",
-  },
+    selectorHeaderBox: {
+      borderColor: colors.accent,
+      borderWidth: 1,
+      borderRadius: 8,
+      paddingHorizontal: 12,
+      paddingVertical: 12,
+      marginBottom: 14,
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "space-between",
+      backgroundColor: colors.card,
+    },
+    selectorHeaderTxt: {
+      color: colors.textPrimary,
+      fontSize: 14,
+      fontFamily: "Inter_500Medium",
+    },
 
-  inlineBox: {
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: "#e6e6e6",
-    borderRadius: 6,
-    paddingHorizontal: 10,
-    paddingVertical: 8,
-  },
-  inlineTxt: {
-    color: "#0F172A",
-    fontSize: 13,
-    fontFamily: "Inter_400Regular",
-  },
+    inlineBox: {
+      flexDirection: "row",
+      alignItems: "center",
+      backgroundColor: colors.border,
+      borderRadius: 6,
+      paddingHorizontal: 10,
+      paddingVertical: 8,
+    },
+    inlineTxt: {
+      color: colors.textPrimary,
+      fontSize: 13,
+      fontFamily: "Inter_400Regular",
+    },
 
-  row: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    backgroundColor: "#ffffff",
-    borderRadius: 8,
-    paddingHorizontal: 14,
-    paddingVertical: 14,
-    marginBottom: 10,
-    borderWidth: 1,
-    borderColor: "#e6e6e6",
-  },
-  rowTxt: {
-    color: "#0F172A",
-    fontSize: 14,
-    fontFamily: "Inter_500Medium",
-    maxWidth: "80%",
-  },
+    row: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "space-between",
+      backgroundColor: colors.card,
+      borderRadius: 8,
+      paddingHorizontal: 14,
+      paddingVertical: 14,
+      marginBottom: 10,
+      borderWidth: 1,
+      borderColor: colors.border,
+    },
+    rowTxt: {
+      color: colors.textPrimary,
+      fontSize: 14,
+      fontFamily: "Inter_500Medium",
+      maxWidth: "80%",
+    },
 
-  ctaWrap: { marginTop: 8 },
-  ctaInner: {
-    borderRadius: 10,
-    paddingVertical: 14,
-    alignItems: "center",
-    justifyContent: "center",
-    flexDirection: "row",
-  },
-  ctaTxt: {
-    color: "#fff",
-    fontSize: 15,
-    fontFamily: "Inter_600SemiBold",
-    marginRight: 6,
-  },
+    ctaWrap: {
+      marginTop: 8,
+      marginBottom: 32,
+    },
+    ctaInner: {
+      borderRadius: 10,
+      paddingVertical: 14,
+      alignItems: "center",
+      justifyContent: "center",
+      flexDirection: "row",
+    },
+    ctaTxt: {
+      color: "#fff",
+      fontSize: 15,
+      fontFamily: "Inter_600SemiBold",
+      marginRight: 6,
+    },
 
-  infoOverlay: {
-    ...RNStyleSheet.absoluteFillObject,
-    justifyContent: "center",
-    alignItems: "center",
-    paddingHorizontal: 22,
-  },
-  infoCard: {
-    width: "92%",
-    backgroundColor: "#ffffff",
-    borderRadius: 16,
-    padding: 20,
-    borderWidth: 1,
-    borderColor: "#e6e6e6",
-  },
-  infoTitle: {
-    color: "#0F172A",
-    fontSize: 16,
-    fontFamily: "Inter_600SemiBold",
-    marginBottom: 4,
-  },
-  infoText: {
-    color: "#374151",
-    fontSize: 14,
-    lineHeight: 20,
-    fontFamily: "Inter_400Regular",
-  },
-  infoButton: {
-    marginTop: 4,
-    borderRadius: 10,
-    backgroundColor: "#ff005c",
-    paddingVertical: 12,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  infoButtonText: {
-    color: "#ffffff",
-    fontSize: 14,
-    fontFamily: "Inter_600SemiBold",
-  },
+    infoOverlay: {
+      ...RNStyleSheet.absoluteFillObject,
+      justifyContent: "center",
+      alignItems: "center",
+      paddingHorizontal: 22,
+    },
+    infoCard: {
+      width: "92%",
+      backgroundColor: colors.card,
+      borderRadius: 16,
+      padding: 20,
+      borderWidth: 1,
+      borderColor: colors.border,
+    },
+    infoTitle: {
+      color: colors.textPrimary,
+      fontSize: 16,
+      fontFamily: "Inter_600SemiBold",
+      marginBottom: 4,
+    },
+    infoText: {
+      color: colors.textSecondary,
+      fontSize: 14,
+      lineHeight: 20,
+      fontFamily: "Inter_400Regular",
+    },
+    infoButton: {
+      marginTop: 4,
+      borderRadius: 10,
+      backgroundColor: colors.accent,
+      paddingVertical: 12,
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    infoButtonText: {
+      color: "#ffffff",
+      fontSize: 14,
+      fontFamily: "Inter_600SemiBold",
+    },
 
-  centerOverlay: {
-    ...RNStyleSheet.absoluteFillObject,
-    justifyContent: "center",
-    alignItems: "center",
-    paddingHorizontal: 22,
-  },
-  confirmBox: {
-    width: "90%",
-    backgroundColor: "#ffffff",
-    borderRadius: 16,
-    padding: 20,
-    borderWidth: 1,
-    borderColor: "#e6e6e6",
-  },
-  confirmTitle: {
-    color: "#0F172A",
-    fontSize: 15,
-    fontFamily: "Inter_600SemiBold",
-    marginBottom: 8,
-  },
-  confirmSub: {
-    color: "#4B5563",
-    fontSize: 13,
-    fontFamily: "Inter_400Regular",
-    lineHeight: 18,
-    marginBottom: 16,
-  },
-  confirmBtn: {
-    borderRadius: 10,
-    paddingVertical: 12,
-    paddingHorizontal: 14,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    marginBottom: 10,
-  },
-  confirmTxt: { fontSize: 14, fontFamily: "Inter_600SemiBold" },
+    centerOverlay: {
+      ...RNStyleSheet.absoluteFillObject,
+      justifyContent: "center",
+      alignItems: "center",
+      paddingHorizontal: 22,
+    },
+    confirmBox: {
+      width: "90%",
+      backgroundColor: colors.card,
+      borderRadius: 16,
+      padding: 20,
+      borderWidth: 1,
+      borderColor: colors.border,
+    },
+    confirmTitle: {
+      color: colors.textPrimary,
+      fontSize: 15,
+      fontFamily: "Inter_600SemiBold",
+      marginBottom: 8,
+    },
+    confirmSub: {
+      color: colors.textSecondary,
+      fontSize: 13,
+      fontFamily: "Inter_400Regular",
+      lineHeight: 18,
+      marginBottom: 16,
+    },
+    confirmBtn: {
+      borderRadius: 10,
+      paddingVertical: 12,
+      paddingHorizontal: 14,
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "space-between",
+      marginBottom: 10,
+    },
+    confirmTxt: { fontSize: 14, fontFamily: "Inter_600SemiBold" },
 
-  cardSessao: {
-    backgroundColor: "#ededed",
-    borderRadius: 16,
-    padding: 16,
-    marginTop: 12,
-    marginHorizontal: 16,
-    borderWidth: 1,
-    borderColor: "#cfcfcf",
-  },
-  cardTitle: {
-    color: "#0F172A",
-    fontSize: 16,
-    fontFamily: "Inter_600SemiBold",
-    maxWidth: "70%",
-  },
-  cardDesc: {
-    color: "#4B5563",
-    fontSize: 13,
-    fontFamily: "Inter_400Regular",
-    marginTop: 10,
-  },
-  cardDue: {
-    color: "#6B7280",
-    fontSize: 12,
-    fontFamily: "Inter_400Regular",
-    marginTop: 8,
-  },
+    cardSessao: {
+      backgroundColor: isDark ? colors.card : "#ededed",
+      borderRadius: 16,
+      padding: 16,
+      marginTop: 12,
+      marginHorizontal: 16,
+      borderWidth: 1,
+      borderColor: isDark ? colors.border : "#cfcfcf",
+    },
+    cardTitle: {
+      color: colors.textPrimary,
+      fontSize: 16,
+      fontFamily: "Inter_600SemiBold",
+      maxWidth: "70%",
+    },
+    cardDesc: {
+      color: colors.textSecondary,
+      fontSize: 13,
+      fontFamily: "Inter_400Regular",
+      marginTop: 10,
+    },
+    cardDue: {
+      color: colors.textSecondary,
+      fontSize: 12,
+      fontFamily: "Inter_400Regular",
+      marginTop: 8,
+    },
 
-  plRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: "#ffffff",
-    borderRadius: 10,
-    padding: 12,
-    borderWidth: 1,
-    borderColor: "#e6e6e6",
-  },
-  plThumb: { width: 44, height: 44, borderRadius: 8, marginRight: 10 },
-  plTitle: {
-    color: "#0F172A",
-    fontSize: 14,
-    fontFamily: "Inter_600SemiBold",
-  },
-  plCat: {
-    color: "#6B7280",
-    fontSize: 12,
-    marginTop: 2,
-    fontFamily: "Inter_400Regular",
-  },
+    plRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      backgroundColor: colors.card,
+      borderRadius: 10,
+      padding: 12,
+      borderWidth: 1,
+      borderColor: colors.border,
+    },
+    plThumb: { width: 44, height: 44, borderRadius: 8, marginRight: 10 },
+    plTitle: {
+      color: colors.textPrimary,
+      fontSize: 14,
+      fontFamily: "Inter_600SemiBold",
+    },
+    plCat: {
+      color: colors.textSecondary,
+      fontSize: 12,
+      marginTop: 2,
+      fontFamily: "Inter_400Regular",
+    },
 
-  playerWrap: {
-    position: "absolute",
-    left: 20,
-    right: 20,
-    bottom: 90,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: "#e6e6e6",
-  },
-  playerCard: {
-    backgroundColor: "#ffffff",
-    borderRadius: 12,
-    padding: 12,
-    flexDirection: "row",
-    alignItems: "center",
-  },
-  playerThumb: { width: 40, height: 40, borderRadius: 6, marginRight: 10 },
-  playerTitle: {
-    color: "#0F172A",
-    fontSize: 14,
-    fontFamily: "Inter_500Medium",
-    marginBottom: 6,
-  },
-  playerBarBg: {
-    height: 3,
-    backgroundColor: "#e3e3e3",
-    borderRadius: 2,
-    overflow: "hidden",
-  },
-  playerBarFill: { height: 3, backgroundColor: "#ff005c" },
-  playerControls: {
-    flexDirection: "row",
-    backgroundColor: "#e6e6e6",
-    borderRadius: 6,
-    paddingHorizontal: 6,
-    paddingVertical: 6,
-    marginLeft: 8,
-  },
-  ctrlBtn: {
-    width: 24,
-    height: 24,
-    alignItems: "center",
-    justifyContent: "center",
-    borderRadius: 4,
-    marginHorizontal: 3,
-  },
+    playerWrap: {
+      position: "absolute",
+      left: 20,
+      right: 20,
+      bottom: 90,
+      borderRadius: 12,
+      borderWidth: 1,
+      borderColor: colors.border,
+    },
+    playerCard: {
+      backgroundColor: colors.card,
+      borderRadius: 12,
+      padding: 12,
+      flexDirection: "row",
+      alignItems: "center",
+    },
+    playerThumb: { width: 40, height: 40, borderRadius: 6, marginRight: 10 },
+    playerTitle: {
+      color: colors.textPrimary,
+      fontSize: 14,
+      fontFamily: "Inter_500Medium",
+      marginBottom: 6,
+    },
+    playerBarBg: {
+      height: 3,
+      backgroundColor: colors.border,
+      borderRadius: 2,
+      overflow: "hidden",
+    },
+    playerBarFill: { height: 3, backgroundColor: colors.accent },
+    playerControls: {
+      flexDirection: "row",
+      backgroundColor: colors.border,
+      borderRadius: 6,
+      paddingHorizontal: 6,
+      paddingVertical: 6,
+      marginLeft: 8,
+    },
+    ctrlBtn: {
+      width: 24,
+      height: 24,
+      alignItems: "center",
+      justifyContent: "center",
+      borderRadius: 4,
+      marginHorizontal: 3,
+    },
 
-  calendarCard: {
-    backgroundColor: "#e4e4e4",
-    borderRadius: 16,
-    padding: 10,
-    marginHorizontal: 16,
-    marginTop: 6,
-    marginBottom: 6,
-    borderWidth: 1,
-    borderColor: "#e6e6e6",
-  },
-  emptyBox: {
-    backgroundColor: "#ededed",
-    borderRadius: 12,
-    padding: 18,
-    alignItems: "center",
-    marginHorizontal: 16,
-    marginTop: 10,
-    borderWidth: 1,
-    borderColor: "#e6e6e6",
-  },
-  emptyText: {
-    color: "#6B7280",
-    fontFamily: "Inter_400Regular",
-  },
-});
+    calendarCard: {
+      backgroundColor: colors.card,
+      borderRadius: 16,
+      padding: 10,
+      marginHorizontal: 16,
+      marginTop: 6,
+      marginBottom: 6,
+      borderWidth: 1,
+      borderColor: colors.border,
+    },
+    emptyBox: {
+      backgroundColor: isDark ? colors.card : "#ededed",
+      borderRadius: 12,
+      padding: 18,
+      alignItems: "center",
+      marginHorizontal: 16,
+      marginTop: 10,
+      borderWidth: 1,
+      borderColor: colors.border,
+    },
+    emptyText: {
+      color: colors.textSecondary,
+      fontFamily: "Inter_400Regular",
+    },
+  });

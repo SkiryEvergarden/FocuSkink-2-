@@ -1,24 +1,25 @@
-import React from "react";
 import {
-  View,
-  Text,
-  StyleSheet,
-  TouchableOpacity,
-  Image,
-  TextInput,
-  ScrollView,
-} from "react-native";
-import { useNavigation } from "@react-navigation/native";
-import {
-  useFonts,
   Poppins_400Regular,
   Poppins_700Bold,
+  useFonts,
 } from "@expo-google-fonts/poppins";
+import { useNavigation } from "@react-navigation/native";
+import {
+  Image,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
+} from "react-native";
+import { useAppTheme } from "../../contexts/ThemeContext";
 
 import arrowIcon from "../../assets_icons/arrow_icon.png";
 
 export default function TelaContato() {
   const navigation = useNavigation();
+  const { colors } = useAppTheme();
 
   const [fontsLoaded] = useFonts({
     Poppins_400Regular,
@@ -26,11 +27,11 @@ export default function TelaContato() {
   });
 
   if (!fontsLoaded) {
-    return <View style={{ flex: 1, backgroundColor: "#f6f6f6" }} />;
+    return <View style={{ flex: 1, backgroundColor: colors.background }} />;
   }
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: colors.background }]}>
       <ScrollView
         contentContainerStyle={styles.scroll}
         showsVerticalScrollIndicator={false}
@@ -40,26 +41,38 @@ export default function TelaContato() {
             onPress={() => navigation.goBack()}
             style={styles.backButton}
           >
-            <Image source={arrowIcon} style={styles.backIcon} />
+            <Image
+              source={arrowIcon}
+              style={[styles.backIcon, { tintColor: colors.icon }]}
+            />
           </TouchableOpacity>
-          <Text style={styles.title}>Contatos</Text>
+
+          <Text style={[styles.title, { color: colors.textPrimary }]}>
+            Contatos
+          </Text>
         </View>
 
-        <Text style={styles.subtitle}>
+        <Text style={[styles.subtitle, { color: colors.textSecondary }]}>
           Entre em contato com nossa equipe pelos canais abaixo sempre que
           precisar de suporte ou tiver alguma sugestão.
         </Text>
 
-        <Text style={styles.label}>E-mail</Text>
+        <Text style={[styles.label, { color: colors.textPrimary }]}>E-mail</Text>
         <TextInput
-          style={styles.input}
+          style={[
+            styles.input,
+            { backgroundColor: colors.input, borderColor: colors.border, color: colors.textPrimary },
+          ]}
           value="focuskink.12@email.com"
           editable={false}
         />
 
-        <Text style={styles.label}>Telefone</Text>
+        <Text style={[styles.label, { color: colors.textPrimary }]}>Telefone</Text>
         <TextInput
-          style={styles.input}
+          style={[
+            styles.input,
+            { backgroundColor: colors.input, borderColor: colors.border, color: colors.textPrimary },
+          ]}
           value="+55 11 94599-3719"
           editable={false}
         />
@@ -71,7 +84,6 @@ export default function TelaContato() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#f6f6f6",
   },
   scroll: {
     paddingHorizontal: 20,
@@ -89,36 +101,29 @@ const styles = StyleSheet.create({
   backIcon: {
     width: 36,
     height: 36,
-    tintColor: "#0F172A",
   },
   title: {
     fontSize: 20,
-    color: "#0F172A",
     fontFamily: "Poppins_700Bold",
   },
   subtitle: {
     fontSize: 13,
-    color: "#4B5563",
     fontFamily: "Poppins_400Regular",
     marginBottom: 28,
     lineHeight: 20,
   },
   label: {
     fontSize: 14,
-    color: "#0F172A",
     fontFamily: "Poppins_700Bold",
     marginBottom: 8,
   },
   input: {
-    backgroundColor: "#ededed",
     borderRadius: 10,
     paddingHorizontal: 14,
     paddingVertical: 14,
     fontSize: 14,
     fontFamily: "Poppins_400Regular",
-    color: "#0F172A",
     marginBottom: 20,
     borderWidth: 1,
-    borderColor: "#e6e6e6",
   },
 });

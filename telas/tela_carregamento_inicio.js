@@ -1,38 +1,46 @@
-import React, { useRef, useEffect } from "react";
-import { View, StyleSheet, Dimensions } from "react-native";
-import { Video, ResizeMode } from "expo-av";
+import { ResizeMode, Video } from "expo-av";
+import { useEffect, useRef } from "react";
+import { Dimensions, StyleSheet, View } from "react-native";
 import { useAuth } from "../contexts/AuthContext";
+import { useAppTheme } from "../contexts/ThemeContext";
 
 export default function Tela_carregamento_inicio({ navigation }) {
   const videoRef = useRef(null);
   const { currentUser, initializing } = useAuth();
+  const { isDark } = useAppTheme();
+
+  const videoSource = isDark
+    ? require("../assets_videos/focusanimation_b.mp4")
+    : require("../assets_videos/focuslalalala.mp4");
 
   useEffect(() => {
     if (!initializing) {
-      
       const timer = setTimeout(() => {
         if (currentUser) {
-          navigation.replace("App"); 
+          navigation.replace("App");
         } else {
-          navigation.replace("Introducao"); 
+          navigation.replace("Introducao");
         }
-      }, 3200); 
-
+      }, 2200);
       return () => clearTimeout(timer);
     }
-  }, [initializing, currentUser]);
+  }, [initializing, currentUser, navigation]);
 
   return (
-    <View style={styles.container}>
+    <View
+      style={[
+        styles.container,
+        { backgroundColor: isDark ? "#141414" : "#ffffff" }
+      ]}
+    >
       <Video
         ref={videoRef}
-        source={require("../assets_videos/focuslalalala.mp4")}
+        source={videoSource}
         style={styles.video}
         resizeMode={ResizeMode.CONTAIN}
         shouldPlay
         isLooping={false}
         isMuted
-        rate={0.9}
       />
     </View>
   );
@@ -43,12 +51,11 @@ const { width, height } = Dimensions.get("window");
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#ffffff",
     justifyContent: "center",
-    alignItems: "center",
+    alignItems: "center"
   },
   video: {
     width,
-    height: height * 0.62,
-  },
+    height: height * 0.62
+  }
 });

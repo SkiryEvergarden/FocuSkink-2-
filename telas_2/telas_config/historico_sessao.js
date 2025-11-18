@@ -1,23 +1,23 @@
-import React, { useMemo, useState, useEffect } from "react";
 import {
-  View,
-  Text,
-  StyleSheet,
-  TouchableOpacity,
-  Image,
-  ScrollView
-} from "react-native";
-import { useNavigation } from "@react-navigation/native";
-import {
-  useFonts,
   Poppins_400Regular,
-  Poppins_700Bold
+  Poppins_700Bold,
+  useFonts
 } from "@expo-google-fonts/poppins";
-import { Calendar, LocaleConfig } from "react-native-calendars";
+import { useNavigation } from "@react-navigation/native";
 import * as SplashScreen from "expo-splash-screen";
-
-import { useSessao } from "../../contexts/SessaoContext";
+import { useEffect, useMemo, useState } from "react";
+import {
+  Image,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View
+} from "react-native";
+import { Calendar, LocaleConfig } from "react-native-calendars";
 import arrowIcon from "../../assets_icons/arrow_icon.png";
+import { useSessao } from "../../contexts/SessaoContext";
+import { useAppTheme } from "../../contexts/ThemeContext";
 
 LocaleConfig.locales["pt-br"] = {
   monthNames: [
@@ -62,13 +62,14 @@ LocaleConfig.locales["pt-br"] = {
 };
 LocaleConfig.defaultLocale = "pt-br";
 
-const startOfDayLocal = (dLike) => {
+const startOfDay = (dLike) => {
   const d = new Date(dLike);
   const x = new Date(d.getFullYear(), d.getMonth(), d.getDate());
   x.setHours(0, 0, 0, 0);
   return x;
 };
-const toLocalDateKey = (dLike) => {
+
+const toISO = (dLike) => {
   if (!dLike) return null;
   const d = new Date(dLike);
   const y = d.getFullYear();
@@ -76,17 +77,18 @@ const toLocalDateKey = (dLike) => {
   const dd = String(d.getDate()).padStart(2, "0");
   return `${y}-${m}-${dd}`;
 };
-const todayISO = toLocalDateKey(new Date());
+
+const todayISO = toISO(new Date());
 
 const getStartISO = (s) =>
   s?.inicioEm || s?.startedAtISO || s?.inicioISO || s?.startAtISO || null;
 const getEndISO = (s) => s?.fimEm || s?.endedAtISO || s?.endAtISO || null;
 
-const getSessionLocalKey = (s) => {
+const getSessionISO = (s) => {
   const end = getEndISO(s);
-  if (end) return toLocalDateKey(end);
+  if (end) return toISO(end);
   const start = getStartISO(s);
-  if (start) return toLocalDateKey(start);
+  if (start) return toISO(start);
   return null;
 };
 
@@ -117,9 +119,7 @@ function getElapsedSec(s) {
   if (endISO && startISO) {
     const end = new Date(endISO).getTime();
     const start = new Date(startISO).getTime();
-    if (Number.isFinite(end) && Number.isFinite(start) && end >= start) {
-      return Math.floor((end - start) / 1000);
-    }
+    if (end >= start) return Math.floor((end - start) / 1000);
   }
   return 0;
 }
@@ -147,6 +147,7 @@ SplashScreen.preventAutoHideAsync();
 export default function HistoricoSessao() {
   const navigation = useNavigation();
   const { historicoSessoes = [] } = useSessao();
+  const { colors } = useAppTheme();
 
   const [fontsLoaded] = useFonts({
     Poppins_400Regular,
@@ -158,27 +159,29 @@ export default function HistoricoSessao() {
   const calendarMarks = useMemo(() => {
     const marks = {};
     (historicoSessoes || []).forEach((s) => {
-      const key = getSessionLocalKey(s);
+      const key = getSessionISO(s);
       if (key) {
         marks[key] = {
           ...(marks[key] || {}),
           marked: true,
-          dotColor: "#ff005c"
+          dotColor: colors.accent
         };
       }
     });
+
     marks[selectedISO] = {
       ...(marks[selectedISO] || {}),
       selected: true,
-      selectedColor: "#ff005c",
+      selectedColor: colors.accent,
       marked: marks[selectedISO]?.marked || false
     };
+
     return marks;
-  }, [historicoSessoes, selectedISO]);
+  }, [historicoSessoes, selectedISO, colors]);
 
   const sessoesDoDia = useMemo(() => {
     return (historicoSessoes || [])
-      .filter((s) => getSessionLocalKey(s) === selectedISO)
+      .filter((s) => getSessionISO(s) === selectedISO)
       .sort((a, b) => {
         const bt = new Date(getEndISO(b) || getStartISO(b) || 0).getTime();
         const at = new Date(getEndISO(a) || getStartISO(a) || 0).getTime();
@@ -187,29 +190,40 @@ export default function HistoricoSessao() {
   }, [historicoSessoes, selectedISO]);
 
   useEffect(() => {
-    if (fontsLoaded) {
-      SplashScreen.hideAsync();
-    }
+    if (fontsLoaded) SplashScreen.hideAsync();
   }, [fontsLoaded]);
 
   if (!fontsLoaded) {
-    return <View style={{ flex: 1, backgroundColor: "#f6f6f6" }} />;
+    return <View style={{ flex: 1, backgroundColor: colors.background }} />;
   }
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: colors.background }]}>
       <View style={styles.header}>
         <TouchableOpacity onPress={() => navigation.goBack()}>
-          <Image source={arrowIcon} style={styles.backIcon} />
+          <Image
+            source={arrowIcon}
+            style={[styles.backIcon, { tintColor: colors.icon }]}
+          />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Histórico de sessões</Text>
+        <Text style={[styles.headerTitle, { color: colors.textPrimary }]}>
+          Histórico de sessões
+        </Text>
       </View>
 
       <ScrollView
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.scrollContent}
       >
-        <View style={styles.calendarCard}>
+        <View
+          style={[
+            styles.calendarCard,
+            {
+              backgroundColor: colors.input,
+              borderColor: colors.border
+            }
+          ]}
+        >
           <Calendar
             monthFormat={"MMMM yyyy"}
             onDayPress={(d) => setSelectedISO(d.dateString)}
@@ -217,26 +231,31 @@ export default function HistoricoSessao() {
             hideExtraDays={false}
             enableSwipeMonths
             theme={{
-              backgroundColor: "#e4e4e4",
-              calendarBackground: "#e4e4e4",
-              dayTextColor: "#0F172A",
-              monthTextColor: "#0F172A",
-              textDisabledColor: "#9CA3AF",
-              arrowColor: "#ff005c",
-              todayTextColor: "#ff005c",
-              textSectionTitleColor: "#6B7280",
-              selectedDayBackgroundColor: "#ff005c",
-              selectedDayTextColor: "#ffffff"
+              backgroundColor: colors.input,
+              calendarBackground: colors.input,
+              dayTextColor: colors.textPrimary,
+              monthTextColor: colors.textPrimary,
+              textDisabledColor: colors.textMuted,
+              arrowColor: colors.accent,
+              todayTextColor: colors.accent,
+              textSectionTitleColor: colors.textSecondary,
+              selectedDayBackgroundColor: colors.accent,
+              selectedDayTextColor: colors.accentText
             }}
           />
         </View>
 
         {sessoesDoDia.length === 0 ? (
-          <View style={styles.emptyBox}>
-            <Text style={styles.emptyTitle}>
+          <View
+            style={[
+              styles.emptyBox,
+              { backgroundColor: colors.card, borderColor: colors.border }
+            ]}
+          >
+            <Text style={[styles.emptyTitle, { color: colors.textPrimary }]}>
               Nenhuma sessão finalizada neste dia.
             </Text>
-            <Text style={styles.emptyText}>
+            <Text style={[styles.emptyText, { color: colors.textBody }]}>
               Finalize uma sessão para ela aparecer aqui.
             </Text>
           </View>
@@ -275,23 +294,67 @@ export default function HistoricoSessao() {
               : "—";
 
             return (
-              <View key={s.id} style={styles.card}>
+              <View
+                key={s.id}
+                style={[
+                  styles.card,
+                  { backgroundColor: colors.card, borderColor: colors.border }
+                ]}
+              >
                 <View style={styles.cardHeaderRow}>
-                  <Text style={styles.cardTitle} numberOfLines={1}>
+                  <Text
+                    style={[styles.cardTitle, { color: colors.textPrimary }]}
+                    numberOfLines={1}
+                  >
                     {titulo}
                   </Text>
-                  <View style={styles.methodPill}>
-                    <Text style={styles.methodText}>{metodoStr}</Text>
+
+                  <View
+                    style={[
+                      styles.methodPill,
+                      { backgroundColor: colors.chipBg }
+                    ]}
+                  >
+                    <Text
+                      style={[styles.methodText, { color: colors.textBody }]}
+                    >
+                      {metodoStr}
+                    </Text>
                   </View>
                 </View>
 
-                <Text style={styles.cardResumo}>{resumo}</Text>
-                <Text style={styles.cardFlags}>{flags}</Text>
-                <Text style={styles.cardData}>Finalizada em {fimStr}</Text>
+                <Text style={[styles.cardResumo, { color: colors.textBody }]}>
+                  {resumo}
+                </Text>
 
-                <View style={styles.permBox}>
-                  <Text style={styles.permLabel}>Tempo de permanência</Text>
-                  <Text style={styles.permValue}>
+                <Text
+                  style={[styles.cardFlags, { color: colors.textSecondary }]}
+                >
+                  {flags}
+                </Text>
+
+                <Text style={[styles.cardData, { color: colors.textMuted }]}>
+                  Finalizada em {fimStr}
+                </Text>
+
+                <View
+                  style={[
+                    styles.permBox,
+                    {
+                      backgroundColor: colors.backgroundAlt,
+                      borderColor: colors.border
+                    }
+                  ]}
+                >
+                  <Text
+                    style={[styles.permLabel, { color: colors.textSecondary }]}
+                  >
+                    Tempo de permanência
+                  </Text>
+
+                  <Text
+                    style={[styles.permValue, { color: colors.accent }]}
+                  >
                     {fmtDur(getElapsedSec(s))}
                   </Text>
                 </View>
@@ -308,10 +371,8 @@ export default function HistoricoSessao() {
 
 const styles = StyleSheet.create({
   container: {
-    flex: 1,
-    backgroundColor: "#f6f6f6"
+    flex: 1
   },
-
   header: {
     paddingTop: 50,
     paddingBottom: 16,
@@ -322,59 +383,45 @@ const styles = StyleSheet.create({
   backIcon: {
     width: 36,
     height: 36,
-    tintColor: "#0F172A",
     marginRight: 10
   },
   headerTitle: {
     fontSize: 18,
-    fontFamily: "Poppins_700Bold",
-    color: "#0F172A"
+    fontFamily: "Poppins_700Bold"
   },
-
   scrollContent: {
     paddingHorizontal: 20,
     paddingBottom: 40
   },
-
   calendarCard: {
-    backgroundColor: "#e4e4e4",
     borderRadius: 16,
     padding: 10,
     marginTop: 6,
     marginBottom: 16,
-    borderWidth: 1,
-    borderColor: "#e6e6e6"
+    borderWidth: 1
   },
-
   emptyBox: {
-    backgroundColor: "#ededed",
     borderRadius: 14,
     padding: 20,
     marginTop: 10,
-    borderWidth: 1,
-    borderColor: "#e6e6e6"
+    borderWidth: 1
   },
   emptyTitle: {
     fontFamily: "Poppins_700Bold",
     fontSize: 15,
-    color: "#0F172A",
     marginBottom: 6
   },
   emptyText: {
     fontFamily: "Poppins_400Regular",
     fontSize: 13,
-    color: "#4B5563",
     lineHeight: 18
   },
-
   card: {
-    backgroundColor: "#ededed",
     borderRadius: 14,
     padding: 16,
     marginBottom: 14,
     marginTop: 10,
-    borderWidth: 1,
-    borderColor: "#cfcfcf"
+    borderWidth: 1
   },
   cardHeaderRow: {
     flexDirection: "row",
@@ -385,57 +432,46 @@ const styles = StyleSheet.create({
   cardTitle: {
     fontFamily: "Poppins_700Bold",
     fontSize: 15,
-    color: "#0F172A",
     maxWidth: "70%"
   },
   methodPill: {
-    backgroundColor: "#e6e6e6",
     paddingHorizontal: 10,
     paddingVertical: 4,
     borderRadius: 10
   },
   methodText: {
     fontFamily: "Poppins_400Regular",
-    fontSize: 12,
-    color: "#374151"
+    fontSize: 12
   },
   cardResumo: {
     fontFamily: "Poppins_400Regular",
     fontSize: 13,
-    color: "#4B5563",
     marginBottom: 6
   },
   cardFlags: {
     fontFamily: "Poppins_400Regular",
     fontSize: 12,
-    color: "#6B7280",
     marginBottom: 6
   },
   cardData: {
     fontFamily: "Poppins_400Regular",
-    fontSize: 12,
-    color: "#9CA3AF"
+    fontSize: 12
   },
-
   permBox: {
     marginTop: 10,
-    backgroundColor: "#ffffff",
     borderRadius: 10,
     paddingVertical: 10,
     paddingHorizontal: 12,
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    borderWidth: 1,
-    borderColor: "#e6e6e6"
+    borderWidth: 1
   },
   permLabel: {
-    color: "#6B7280",
     fontFamily: "Poppins_400Regular",
     fontSize: 12
   },
   permValue: {
-    color: "#ff005c",
     fontFamily: "Poppins_700Bold",
     fontSize: 14
   }

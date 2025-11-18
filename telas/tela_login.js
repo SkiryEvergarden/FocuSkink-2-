@@ -10,6 +10,7 @@ import {
   KeyboardAvoidingView,
   Platform,
   ScrollView,
+  ActivityIndicator,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useNavigation } from "@react-navigation/native";
@@ -24,19 +25,24 @@ export default function TelaLogin() {
   const [mostrarSenha, setMostrarSenha] = useState(false);
   const [erroEmail, setErroEmail] = useState("");
   const [erroSenha, setErroSenha] = useState("");
+  const [loading, setLoading] = useState(false);
 
   const validarEmail = (e) => /\S+@\S+\.\S+/.test(e);
   const emailValido = validarEmail(email);
-  const botaoHabilitado = emailValido && senha.length > 0;
+  const botaoHabilitado = emailValido && senha.length > 0 && !loading;
 
   const handleLogin = async () => {
     setErroEmail("");
     setErroSenha("");
 
-    if (!emailValido) {
-      setErroEmail("Digite um e-mail válido");
+    if (!emailValido || loading) {
+      if (!emailValido) {
+        setErroEmail("Digite um e-mail válido");
+      }
       return;
     }
+
+    setLoading(true);
 
     try {
       await login({ email, password: senha });
@@ -53,6 +59,8 @@ export default function TelaLogin() {
       } else {
         setErroEmail("Erro inesperado ao entrar. Tente novamente.");
       }
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -135,12 +143,27 @@ export default function TelaLogin() {
               disabled={!botaoHabilitado}
               onPress={handleLogin}
             >
-              <Text style={styles.textoBotaoFinalizar}>Finalizar</Text>
+              {loading ? (
+                <View style={{ flexDirection: "row", alignItems: "center" }}>
+                  <ActivityIndicator size="small" color="#FFFFFF" />
+                  <Text
+                    style={[
+                      styles.textoBotaoFinalizar,
+                      { marginLeft: 8 },
+                    ]}
+                  >
+                    Entrando...
+                  </Text>
+                </View>
+              ) : (
+                <Text style={styles.textoBotaoFinalizar}>Finalizar</Text>
+              )}
             </TouchableOpacity>
 
             <TouchableOpacity
               style={styles.botaoCadastrar}
               onPress={() => navigation.navigate("Cadastro")}
+              disabled={loading}
             >
               <Text style={styles.textoBotaoCadastrar}>Cadastrar</Text>
             </TouchableOpacity>

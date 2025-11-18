@@ -7,9 +7,16 @@ import React, {
   useCallback,
   useMemo,
 } from "react";
-import { doc, setDoc, onSnapshot, collection, addDoc, query, orderBy } from "firebase/firestore";
+import {
+  doc,
+  setDoc,
+  onSnapshot,
+  collection,
+  addDoc,
+  query,
+  orderBy,
+} from "firebase/firestore";
 import { db } from "../firebaseConfig";
-
 import { useRelatorio } from "./RelatorioContext";
 import { useAuth } from "./AuthContext";
 
@@ -40,7 +47,6 @@ export function SessaoProvider({ children }) {
 
   const { registrarSessaoConcluida } = useRelatorio();
 
-  
   useEffect(() => {
     if (!userId) {
       setSessao(initialSessaoState);
@@ -80,12 +86,12 @@ export function SessaoProvider({ children }) {
   }, [userId]);
 
   const setSessaoForUser = useCallback(
-    (update) => {
+    (update, options = { persist: true }) => {
       setSessao((prev) => {
         const next =
           typeof update === "function" ? update(prev) : update;
 
-        if (userId) {
+        if (userId && options.persist) {
           const sessaoRef = doc(db, "users", userId, "state", "sessao");
           setDoc(sessaoRef, next).catch((e) =>
             console.log("Erro ao salvar sessão no Firestore:", e)
@@ -132,15 +138,18 @@ export function SessaoProvider({ children }) {
         minutos: prev.deepwork?.minutos ?? null,
       };
 
-      
       if (userId) {
-        const historicoRef = collection(db, "users", userId, "historicoSessoes");
+        const historicoRef = collection(
+          db,
+          "users",
+          userId,
+          "historicoSessoes"
+        );
         addDoc(historicoRef, base).catch((e) =>
           console.log("Erro ao salvar histórico de sessão:", e)
         );
       }
 
-     
       registrarSessaoConcluida?.();
     },
     [makeId, registrarSessaoConcluida, userId]
@@ -268,7 +277,7 @@ export function SessaoProvider({ children }) {
   useEffect(() => {
     if (sessao.isRunning && !sessao.paused) {
       intervalRef.current = setInterval(() => {
-        setSessaoForUser((prev) => {
+        setSessao((prev) => {
           if (!prev.isRunning || prev.paused) return prev;
 
           const nextRemain = prev.remainingSec - 1;
@@ -282,11 +291,20 @@ export function SessaoProvider({ children }) {
             };
           }
 
-          return endCurrentSession({
+          const ended = endCurrentSession({
             ...prev,
             remainingSec: 0,
             duracaoAtivaSec: nextActive,
           });
+
+          if (userId) {
+            const sessaoRef = doc(db, "users", userId, "state", "sessao");
+            setDoc(sessaoRef, ended).catch((e) =>
+              console.log("Erro ao salvar sessão finalizada:", e)
+            );
+          }
+
+          return ended;
         });
       }, 1000);
     }
@@ -294,7 +312,7 @@ export function SessaoProvider({ children }) {
     return () => {
       if (intervalRef.current) clearInterval(intervalRef.current);
     };
-  }, [sessao.isRunning, sessao.paused, endCurrentSession, setSessaoForUser]);
+  }, [sessao.isRunning, sessao.paused, endCurrentSession, userId]);
 
   const value = useMemo(
     () => ({

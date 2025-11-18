@@ -1,10 +1,10 @@
 {
   "expo": {
-    "name": "focuskink",
+    "name": "FocuSkink",
     "slug": "snack-c301c51c-1957-4d64-82ae-f165fbb5295c",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/icondoapp.jpeg",
+    "icon": "./assets/icon-adaptive.png",
     "userInterfaceStyle": "light",
     "newArchEnabled": true,
     "ios": {
@@ -12,19 +12,24 @@
     },
     "android": {
       "adaptiveIcon": {
-        "foregroundImage": "./assets/icondoapp.jpeg",
+        "foregroundImage": "./assets/icon-adaptive.png",
         "backgroundColor": "#ffffff"
       },
-      "edgeToEdgeEnabled": true
+      "edgeToEdgeEnabled": true,
+      "package": "com.sfonfs.snackc301c51c19574d6482aef165fbb5295c"
     },
     "web": {
-      "favicon": "./assets/icondoapp.jpeg"
+      "favicon": "./assets/icondoapp123.png"
     },
     "extra": {
       "eas": {
         "projectId": "f5b3f577-c8ed-4f91-9490-1d8546817a3b"
       }
     },
-    "owner": "sfonfs"
+    "owner": "sfonfs",
+    "plugins": [
+      "expo-font",
+      "expo-asset"
+    ]
   }
 }

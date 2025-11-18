@@ -6,12 +6,6 @@ import React, {
   useCallback,
   useEffect,
 } from "react";
-
-import { useRelatorio } from "./RelatorioContext";
-import { useAchievements } from "./AchievementsContext";
-import { useAuth } from "./AuthContext";
-
-import { db } from "../firebaseConfig";
 import {
   collection,
   addDoc,
@@ -22,8 +16,11 @@ import {
   query,
   where,
 } from "firebase/firestore";
+import { db } from "../firebaseConfig";
 
-
+import { useRelatorio } from "./RelatorioContext";
+import { useAchievements } from "./AchievementsContext";
+import { useAuth } from "./AuthContext";
 
 function parseBRDate(str) {
   if (!str || typeof str !== "string") return null;
@@ -49,11 +46,12 @@ function isSameDay(a, b) {
 function taskMatchesDate(t, date) {
   if (t.concluida) return false;
 
-  const criado = t.criadoEm ? new Date(t.criadoEn || t.criadoEm) : null;
+  const criado = t.criadoEm ? new Date(t.criadoEm) : null;
   const due = t.concluirAte ? parseBRDate(t.concluirAte) : null;
 
-  const weekday = (due || criado || date).getDay();
-  const monthday = (due || criado || date).getDate();
+  const baseDate = due || criado || date;
+  const weekday = baseDate.getDay();
+  const monthday = baseDate.getDate();
 
   if (t.tipo === "diaria") return true;
   if (t.tipo === "semanal") return date.getDay() === weekday;
@@ -63,8 +61,6 @@ function taskMatchesDate(t, date) {
 
   return false;
 }
-
-
 
 const TarefasContext = createContext(null);
 
@@ -77,7 +73,6 @@ export const TarefasProvider = ({ children }) => {
 
   const [tarefas, setTarefas] = useState([]);
 
-
   useEffect(() => {
     if (!activeUserId) {
       setTarefas([]);
@@ -86,7 +81,6 @@ export const TarefasProvider = ({ children }) => {
 
     const tarefasRef = collection(db, "tarefas");
     const q = query(tarefasRef, where("userId", "==", activeUserId));
-   
 
     const unsub = onSnapshot(
       q,
@@ -103,22 +97,27 @@ export const TarefasProvider = ({ children }) => {
     return () => unsub();
   }, [activeUserId]);
 
-  
   const addTarefa = useCallback(
     async ({ titulo, concluirAte, descricao, tipo }) => {
       if (!activeUserId) return;
 
+      const nowISO = new Date().toISOString();
+
+      const nova = {
+        userId: activeUserId,
+        titulo: titulo.trim(),
+        concluirAte: concluirAte?.trim() || "",
+        descricao: descricao?.trim() || "",
+        concluida: false,
+        criadoEm: nowISO,
+        tipo: tipo || null,
+        concluidoEm: null,
+      };
+
+      setTarefas((prev) => [...prev, { id: `local-${nowISO}`, ...nova }]);
+
       try {
-        await addDoc(collection(db, "tarefas"), {
-          userId: activeUserId,
-          titulo: titulo.trim(),
-          concluirAte: concluirAte?.trim() || "",
-          descricao: descricao?.trim() || "",
-          concluida: false,
-          criadoEm: new Date().toISOString(), // ✔ CAMPO CERTO
-          tipo: tipo || null,
-          concluidoEm: null,
-        });
+        await addDoc(collection(db, "tarefas"), nova);
       } catch (e) {
         console.log("Erro ao criar tarefa no Firestore:", e);
       }
@@ -126,16 +125,25 @@ export const TarefasProvider = ({ children }) => {
     [activeUserId]
   );
 
-  
   const concluirTarefa = useCallback(
     async (id) => {
       const t = tarefas.find((x) => x.id === id);
       if (!t || t.concluida) return;
 
+      const concluidoEm = new Date().toISOString();
+
+      setTarefas((prev) =>
+        prev.map((task) =>
+          task.id === id
+            ? { ...task, concluida: true, concluidoEm }
+            : task
+        )
+      );
+
       try {
         await updateDoc(doc(db, "tarefas", id), {
           concluida: true,
-          concluidoEm: new Date().toISOString(),
+          concluidoEm,
         });
 
         registrarTarefaConcluida?.();
@@ -147,8 +155,8 @@ export const TarefasProvider = ({ children }) => {
     [tarefas, registrarTarefaConcluida, registerTaskCompleted]
   );
 
- 
   const excluirTarefa = useCallback(async (id) => {
+    setTarefas((prev) => prev.filter((t) => t.id !== id));
     try {
       await deleteDoc(doc(db, "tarefas", id));
     } catch (e) {
@@ -156,7 +164,6 @@ export const TarefasProvider = ({ children }) => {
     }
   }, []);
 
-  
   const getByDate = useCallback(
     (date) => {
       const d = startOfDay(date);
@@ -165,7 +172,6 @@ export const TarefasProvider = ({ children }) => {
     [tarefas]
   );
 
-  
   const listasClassificadas = useMemo(() => {
     const hoje = startOfDay(new Date());
 
@@ -185,9 +191,8 @@ export const TarefasProvider = ({ children }) => {
       else if (t.tipo === "semanal") semanais.push(t);
       else if (t.tipo === "mensal") mensaisTemp.push(t);
 
-      if (due) mensaisTemp.push(t);
+      if (!t.tipo && due) mensaisTemp.push(t);
     }
-
 
     const seen = new Set();
     const mensais = [];

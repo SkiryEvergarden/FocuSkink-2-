@@ -1,25 +1,27 @@
-import React, { useState } from "react";
+import { Inter_400Regular } from "@expo-google-fonts/inter";
 import {
-  View,
-  Text,
-  StyleSheet,
-  ScrollView,
-  Image,
-  TouchableOpacity,
-  Dimensions,
-  Modal,
-} from "react-native";
-import { BlurView } from "expo-blur";
-import { LinearGradient } from "expo-linear-gradient";
-import { useNavigation } from "@react-navigation/native";
-import {
-  useFonts,
   Poppins_400Regular,
   Poppins_700Bold,
+  useFonts,
 } from "@expo-google-fonts/poppins";
-import { Inter_400Regular } from "@expo-google-fonts/inter";
+import { useNavigation } from "@react-navigation/native";
+import { BlurView } from "expo-blur";
+import { LinearGradient } from "expo-linear-gradient";
+import { useState } from "react";
+import {
+  ActivityIndicator,
+  Dimensions,
+  Image,
+  Modal,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+} from "react-native";
 
 import { useAuth } from "../../contexts/AuthContext";
+import { useAppTheme } from "../../contexts/ThemeContext";
 
 const { width } = Dimensions.get("window");
 const CARD_SIZE = (width - 48 - 12) / 2;
@@ -31,12 +33,21 @@ export default function TelaDefinicoes() {
   const [modalVisible, setModalVisible] = useState(false);
   const [modalText, setModalText] = useState("");
   const [modalAction, setModalAction] = useState(null);
+  const [modalType, setModalType] = useState(null);
+
+  const [loadingLogout, setLoadingLogout] = useState(false);
+  const [loadingDelete, setLoadingDelete] = useState(false);
 
   const auth = useAuth() || {};
   const { currentUser, logout, deleteAccount } = auth;
 
   const displayName = currentUser?.username || "Nome do usuário";
   const avatarUri = currentUser?.avatarUri || null;
+
+  const { colors, isDark, toggleTheme } = useAppTheme();
+  const themeIcon = isDark
+    ? require("../../assets_icons/iconluaa.png")
+    : require("../../assets_icons/iconsoll.png");
 
   const [fontsLoaded] = useFonts({
     Poppins_400Regular,
@@ -45,26 +56,49 @@ export default function TelaDefinicoes() {
   });
 
   if (!fontsLoaded) {
-    return <View style={{ flex: 1, backgroundColor: "#f6f6f6" }} />;
+    return <View style={{ flex: 1, backgroundColor: colors.background }} />;
   }
 
-  function abrirModal(text, action) {
+  function abrirModal(text, type, action) {
     setModalText(text);
+    setModalType(type);
     setModalAction(() => action);
     setModalVisible(true);
   }
 
-  function confirmarAcao() {
+  async function confirmarAcao() {
+    if (!modalAction || (!modalType && modalType !== "logout" && modalType !== "delete")) {
+      setModalVisible(false);
+      return;
+    }
+
     setModalVisible(false);
-    if (modalAction) modalAction();
+
+    if (modalType === "logout") {
+      setLoadingLogout(true);
+    } else if (modalType === "delete") {
+      setLoadingDelete(true);
+    }
+
+    try {
+      await modalAction();
+    } catch (e) {
+    } finally {
+      setLoadingLogout(false);
+      setLoadingDelete(false);
+      setModalType(null);
+      setModalAction(null);
+    }
   }
 
   function cancelarAcao() {
     setModalVisible(false);
   }
 
+  const algumCarregando = loadingLogout || loadingDelete;
+
   return (
-    <View style={styles.screen}>
+    <View style={[styles.screen, { backgroundColor: colors.background }]}>
       <ScrollView
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
@@ -74,25 +108,44 @@ export default function TelaDefinicoes() {
             {avatarUri ? (
               <Image source={{ uri: avatarUri }} style={styles.avatarImage} />
             ) : (
-              <View style={styles.avatar} />
+              <View style={[styles.avatar, { backgroundColor: colors.chipBg }]} />
             )}
-            <Text style={styles.userName}>Olá, {displayName}</Text>
+            <Text style={[styles.userName, { color: colors.textPrimary }]}>
+              Olá, {displayName}
+            </Text>
+          </View>
+
+          <View style={styles.headerRight}>
+            <TouchableOpacity
+              onPress={toggleTheme}
+              activeOpacity={0.8}
+              style={styles.themeToggleBtn}
+            >
+              <Image source={themeIcon} style={[styles.themeIcon, { tintColor: colors.icon }]} />
+            </TouchableOpacity>
           </View>
         </View>
 
-        <Text style={styles.descriptionText}>
+        <Text style={[styles.descriptionText, { color: colors.textBody }]}>
           Gerencie sua conta, visualize sua atividade e fale conosco.
         </Text>
 
-        <View style={styles.premiumBox}>
+        <View
+          style={[
+            styles.premiumBox,
+            { backgroundColor: colors.accent },
+          ]}
+        >
           <TouchableOpacity style={styles.premiumIconBtn} activeOpacity={0.8}>
             <Image
               source={require("../../assets_icons/seguir.png")}
-              style={styles.premiumIcon}
+              style={[styles.premiumIcon, { tintColor: colors.accentText }]}
             />
           </TouchableOpacity>
 
-          <Text style={styles.premiumText}>Plano premium</Text>
+          <Text style={[styles.premiumText, { color: colors.accentText }]}>
+            Plano premium
+          </Text>
         </View>
 
         <ScrollView
@@ -101,142 +154,165 @@ export default function TelaDefinicoes() {
           contentContainerStyle={styles.quickScrollContent}
           style={styles.quickScroll}
         >
-          <TouchableOpacity
-            style={styles.quickChip}
-            onPress={() => navigation.navigate("Feedback")}
-            activeOpacity={0.8}
-          >
-            <Text style={styles.quickChipText}>Sugestões</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={styles.quickChip}
-            onPress={() => navigation.navigate("Contato")}
-            activeOpacity={0.8}
-          >
-            <Text style={styles.quickChipText}>Contatos</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={styles.quickChip}
-            onPress={() => navigation.navigate("SobreNos")}
-            activeOpacity={0.8}
-          >
-            <Text style={styles.quickChipText}>Sobre nós</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={styles.quickChip}
-            onPress={() => navigation.navigate("TermosDois")}
-            activeOpacity={0.8}
-          >
-            <Text style={styles.quickChipText}>Termos</Text>
-          </TouchableOpacity>
+          {[
+            { name: "Sugestões", screen: "Feedback" },
+            { name: "Contatos", screen: "Contato" },
+            { name: "Sobre nós", screen: "SobreNos" },
+            { name: "Termos", screen: "TermosDois" },
+          ].map((item) => (
+            <TouchableOpacity
+              key={item.name}
+              style={[
+                styles.quickChip,
+                { backgroundColor: colors.chipBg },
+              ]}
+              onPress={() => navigation.navigate(item.screen)}
+              activeOpacity={0.8}
+            >
+              <Text style={[styles.quickChipText, { color: colors.textPrimary }]}>
+                {item.name}
+              </Text>
+            </TouchableOpacity>
+          ))}
         </ScrollView>
 
-        <Text style={styles.sectionTitle}>Gerenciar conta</Text>
+        <Text style={[styles.sectionTitle, { color: colors.textPrimary }]}>
+          Gerenciar conta
+        </Text>
 
         <View style={styles.gridWrapper}>
-          <TouchableOpacity
-            style={styles.gridCard}
-            activeOpacity={0.8}
-            onPress={() => navigation.navigate("EditarPerfil")}
-          >
-            <View style={styles.gridIconWrapper}>
-              <Image
-                source={require("../../assets_icons/icon_favorite.png")}
-                style={styles.gridIcon}
-              />
-            </View>
-            <Text style={styles.gridTitle}>Perfil</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={[styles.gridCard, { marginRight: 0 }]}
-            activeOpacity={0.8}
-            onPress={() => navigation.navigate("Historico")}
-          >
-            <View style={styles.gridIconWrapper}>
-              <Image
-                source={require("../../assets_icons/icon_favorite.png")}
-                style={styles.gridIcon}
-              />
-            </View>
-            <Text style={styles.gridTitle}>Atividade</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={styles.gridCard}
-            activeOpacity={0.8}
-            onPress={() => navigation.navigate("AdmConta")}
-          >
-            <View style={styles.gridIconWrapper}>
-              <Image
-                source={require("../../assets_icons/icon_favorite.png")}
-                style={styles.gridIcon}
-              />
-            </View>
-            <Text style={styles.gridTitle}>Administrar</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={[styles.gridCard, { marginRight: 0 }]}
-            activeOpacity={0.8}
-            onPress={() => navigation.navigate("Servicos")}
-          >
-            <View style={styles.gridIconWrapper}>
-              <Image
-                source={require("../../assets_icons/icon_favorite.png")}
-                style={styles.gridIcon}
-              />
-            </View>
-            <Text style={styles.gridTitle}>Serviços</Text>
-          </TouchableOpacity>
+          {[
+            { label: "Perfil", screen: "EditarPerfil" },
+            { label: "Atividade", screen: "Historico" },
+            { label: "Administrar", screen: "AdmConta" },
+            { label: "Serviços", screen: "Servicos" },
+          ].map((item, i) => (
+            <TouchableOpacity
+              key={item.label}
+              style={[
+                styles.gridCard,
+                {
+                  backgroundColor: colors.card,
+                  borderColor: colors.border,
+                },
+                i % 2 === 1 && { marginRight: 0 },
+              ]}
+              activeOpacity={0.8}
+              onPress={() => navigation.navigate(item.screen)}
+            >
+              <View
+                style={[
+                  styles.gridIconWrapper,
+                  { backgroundColor: colors.input },
+                ]}
+              >
+                <Image
+                  source={require("../../assets_icons/icon_favorite.png")}
+                  style={[styles.gridIcon, { tintColor: colors.icon }]}
+                />
+              </View>
+              <Text style={[styles.gridTitle, { color: colors.textPrimary }]}>
+                {item.label}
+              </Text>
+            </TouchableOpacity>
+          ))}
         </View>
 
         <TouchableOpacity
-          style={styles.logoutButton}
+          style={[
+            styles.logoutButton,
+            { backgroundColor: colors.chipBg },
+            algumCarregando && { opacity: 0.6 },
+          ]}
           activeOpacity={0.8}
+          disabled={algumCarregando}
           onPress={() =>
-            abrirModal("Você deseja finalizar a sessão?", async () => {
-              try {
-                await logout?.();
-              } catch (e) {
-                console.log("Erro ao sair:", e);
+            abrirModal(
+              "Você deseja finalizar a sessão?",
+              "logout",
+              async () => {
+                try {
+                  await logout?.();
+                } catch (e) {}
+                navigation.reset({
+                  index: 0,
+                  routes: [{ name: "Login" }],
+                });
               }
-              navigation.reset({
-                index: 0,
-                routes: [{ name: "Login" }],
-              });
-            })
+            )
           }
         >
-          <Text style={styles.logoutButtonText}>Finalizar sessão</Text>
+          {loadingLogout ? (
+            <View style={{ flexDirection: "row", alignItems: "center" }}>
+              <ActivityIndicator size="small" color={colors.icon} />
+              <Text
+                style={[
+                  styles.logoutButtonText,
+                  { marginLeft: 8, color: colors.textPrimary },
+                ]}
+              >
+                Finalizando...
+              </Text>
+            </View>
+          ) : (
+            <Text style={[styles.logoutButtonText, { color: colors.textPrimary }]}>
+              Finalizar sessão
+            </Text>
+          )}
         </TouchableOpacity>
 
         <TouchableOpacity
-          style={styles.deleteButton}
+          style={[
+            styles.deleteButton,
+            {
+              borderColor: colors.danger,
+            },
+            algumCarregando && { opacity: 0.6 },
+          ]}
           activeOpacity={0.8}
+          disabled={algumCarregando}
           onPress={() =>
-            abrirModal("Você realmente deseja excluir sua conta?", async () => {
-              try {
-                await deleteAccount?.();
-              } catch (e) {
-                console.log("Erro ao excluir conta:", e);
+            abrirModal(
+              "Você realmente deseja excluir sua conta?",
+              "delete",
+              async () => {
+                try {
+                  await deleteAccount?.();
+                } catch (e) {}
+                navigation.reset({
+                  index: 0,
+                  routes: [{ name: "Login" }],
+                });
               }
-              navigation.reset({
-                index: 0,
-                routes: [{ name: "Login" }],
-              });
-            })
+            )
           }
         >
-          <Text style={styles.deleteButtonText}>Excluir conta</Text>
+          {loadingDelete ? (
+            <View style={{ flexDirection: "row", alignItems: "center" }}>
+              <ActivityIndicator size="small" color={colors.danger} />
+              <Text
+                style={[
+                  styles.deleteButtonText,
+                  { marginLeft: 8, color: colors.danger },
+                ]}
+              >
+                Apagando...
+              </Text>
+            </View>
+          ) : (
+            <Text style={[styles.deleteButtonText, { color: colors.danger }]}>
+              Excluir conta
+            </Text>
+          )}
         </TouchableOpacity>
       </ScrollView>
 
       <LinearGradient
-        colors={["rgba(246,246,246,0)", "rgba(246,246,246,0.95)"]}
+        colors={
+          isDark
+            ? ["rgba(0,0,0,0)", "rgba(0,0,0,0.8)"]
+            : ["rgba(246,246,246,0)", "rgba(246,246,246,0.95)"]
+        }
         start={{ x: 0, y: 0 }}
         end={{ x: 0, y: 1 }}
         style={styles.gradientWrapper}
@@ -244,11 +320,19 @@ export default function TelaDefinicoes() {
       >
         <BlurView
           intensity={25}
-          tint="light"
+          tint={isDark ? "dark" : "light"}
           style={styles.navbarWrapper}
           pointerEvents="box-none"
         >
-          <View style={styles.navbar}>
+          <View
+            style={[
+              styles.navbar,
+              {
+                backgroundColor: colors.card,
+                borderColor: colors.navBorder,
+              },
+            ]}
+          >
             {[
               {
                 name: "Início",
@@ -270,55 +354,85 @@ export default function TelaDefinicoes() {
                 icon: require("../../assets_icons/config_icon.png"),
                 screen: "TelaDefinicoes",
               },
-            ].map((item) => (
-              <TouchableOpacity
-                key={item.name}
-                style={styles.navItem}
-                onPress={() => navigation.navigate(item.screen)}
-              >
-                <Image
-                  source={item.icon}
-                  resizeMode="contain"
-                  style={[
-                    styles.navIcon,
-                    item.name === "Definições" && { tintColor: "#ff005c" },
-                  ]}
-                />
-                <Text
-                  style={[
-                    styles.navText,
-                    item.name === "Definições" && { color: "#ff005c" },
-                  ]}
+            ].map((item) => {
+              const active = item.name === "Definições";
+              return (
+                <TouchableOpacity
+                  key={item.name}
+                  style={styles.navItem}
+                  onPress={() => navigation.navigate(item.screen)}
                 >
-                  {item.name}
-                </Text>
-              </TouchableOpacity>
-            ))}
+                  <Image
+                    source={item.icon}
+                    resizeMode="contain"
+                    style={[
+                      styles.navIcon,
+                      {
+                        tintColor: active ? colors.accent : colors.icon,
+                      },
+                    ]}
+                  />
+                  <Text
+                    style={[
+                      styles.navText,
+                      {
+                        color: active ? colors.accent : colors.textPrimary,
+                      },
+                    ]}
+                  >
+                    {item.name}
+                  </Text>
+                </TouchableOpacity>
+              );
+            })}
           </View>
         </BlurView>
       </LinearGradient>
 
       <Modal transparent visible={modalVisible} animationType="fade">
         <View style={styles.modalOverlay}>
-          <BlurView intensity={100} tint="dark" style={StyleSheet.absoluteFill} />
-          <View style={styles.modalBox}>
-            <Text style={styles.modalTitle}>{modalText}</Text>
-            <Text style={styles.modalSubtitle}>
+          <BlurView
+            intensity={100}
+            tint={isDark ? "dark" : "light"}
+            style={StyleSheet.absoluteFill}
+          />
+          <View
+            style={[
+              styles.modalBox,
+              { backgroundColor: colors.card, borderColor: colors.border },
+            ]}
+          >
+            <Text style={[styles.modalTitle, { color: colors.textPrimary }]}>
+              {modalText}
+            </Text>
+            <Text style={[styles.modalSubtitle, { color: colors.textBody }]}>
               Essa confirmação ajuda a manter sua conta segura.
             </Text>
 
             <TouchableOpacity
-              style={[styles.modalActionBtn, { backgroundColor: "#ff005c" }]}
+              style={[
+                styles.modalActionBtn,
+                { backgroundColor: colors.accent },
+              ]}
               onPress={confirmarAcao}
+              disabled={algumCarregando}
             >
-              <Text style={styles.modalActionTextLight}>Sim, confirmar</Text>
+              <Text style={[styles.modalActionTextLight, { color: colors.accentText }]}>
+                Sim, confirmar
+              </Text>
             </TouchableOpacity>
 
             <TouchableOpacity
-              style={[styles.modalActionBtn, { backgroundColor: "#e5e7eb" }]}
+              style={[
+                styles.modalActionBtn,
+                { backgroundColor: colors.chipBg },
+              ]}
               onPress={cancelarAcao}
+              disabled={algumCarregando}
             >
-              <Text style={styles.modalActionTextDark}>Cancelar</Text>
+              <Text style={[styles.modalActionTextDark, { color: colors.textPrimary }]}>
+                Cancelar
+              </Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -330,7 +444,6 @@ export default function TelaDefinicoes() {
 const styles = StyleSheet.create({
   screen: {
     flex: 1,
-    backgroundColor: "#f6f6f6",
   },
   scrollContent: {
     paddingHorizontal: 24,
@@ -347,11 +460,22 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
   },
+  headerRight: {
+    flexDirection: "row",
+    alignItems: "center",
+  },
+  themeToggleBtn: {
+    paddingHorizontal: 6,
+    paddingVertical: 4,
+  },
+  themeIcon: {
+    width: 26,
+    height: 26,
+  },
   avatar: {
     width: 46,
     height: 46,
     borderRadius: 23,
-    backgroundColor: "#E5E7EB",
   },
   avatarImage: {
     width: 46,
@@ -359,20 +483,17 @@ const styles = StyleSheet.create({
     borderRadius: 23,
   },
   userName: {
-    color: "#0F172A",
     fontSize: 16,
     fontFamily: "Poppins_400Regular",
     marginLeft: 14,
   },
   descriptionText: {
-    color: "#4B5563",
     fontSize: 14,
     lineHeight: 20,
     fontFamily: "Poppins_400Regular",
     marginBottom: 16,
   },
   premiumBox: {
-    backgroundColor: "#ff005c",
     borderRadius: 10,
     paddingVertical: 16,
     paddingHorizontal: 16,
@@ -394,10 +515,8 @@ const styles = StyleSheet.create({
   premiumIcon: {
     width: 18,
     height: 18,
-    tintColor: "#fff",
   },
   premiumText: {
-    color: "#fff",
     fontSize: 16,
     fontFamily: "Poppins_700Bold",
   },
@@ -408,19 +527,16 @@ const styles = StyleSheet.create({
     paddingRight: 8,
   },
   quickChip: {
-    backgroundColor: "#E5E7EB",
     borderRadius: 8,
     paddingHorizontal: 12,
     paddingVertical: 8,
     marginRight: 8,
   },
   quickChipText: {
-    color: "#0F172A",
     fontSize: 12,
     fontFamily: "Poppins_700Bold",
   },
   sectionTitle: {
-    color: "#0F172A",
     fontSize: 16,
     fontFamily: "Poppins_700Bold",
     marginBottom: 16,
@@ -433,25 +549,18 @@ const styles = StyleSheet.create({
   gridCard: {
     width: CARD_SIZE,
     height: CARD_SIZE,
-    backgroundColor: "#ffffff",
     borderRadius: 10,
     padding: 14,
     marginBottom: 12,
     marginRight: 12,
     justifyContent: "flex-start",
     borderWidth: 1,
-    borderColor: "#E5E7EB",
-    shadowColor: "#000",
-    shadowOpacity: 0.05,
-    shadowRadius: 6,
-    shadowOffset: { width: 0, height: 2 },
     elevation: 2,
   },
   gridIconWrapper: {
     width: 30,
     height: 30,
     borderRadius: 6,
-    backgroundColor: "#F3F4F6",
     justifyContent: "center",
     alignItems: "center",
     marginBottom: 14,
@@ -459,29 +568,24 @@ const styles = StyleSheet.create({
   gridIcon: {
     width: 18,
     height: 18,
-    tintColor: "#111827",
   },
   gridTitle: {
-    color: "#0F172A",
     fontSize: 14,
     fontFamily: "Poppins_700Bold",
   },
   logoutButton: {
     width: "100%",
-    backgroundColor: "#E5E7EB",
     borderRadius: 10,
     paddingVertical: 16,
     alignItems: "center",
     marginBottom: 12,
   },
   logoutButtonText: {
-    color: "#111827",
     fontSize: 15,
     fontFamily: "Poppins_700Bold",
   },
   deleteButton: {
     width: "100%",
-    borderColor: "#EF4444",
     borderWidth: 2,
     borderRadius: 10,
     paddingVertical: 16,
@@ -489,7 +593,6 @@ const styles = StyleSheet.create({
     marginBottom: 24,
   },
   deleteButtonText: {
-    color: "#EF4444",
     fontSize: 15,
     fontFamily: "Poppins_700Bold",
   },
@@ -508,7 +611,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
   },
   navbar: {
-    backgroundColor: "#ffffff",
     flexDirection: "row",
     justifyContent: "space-around",
     alignItems: "center",
@@ -516,7 +618,6 @@ const styles = StyleSheet.create({
     paddingVertical: 14,
     paddingHorizontal: 10,
     borderWidth: 1,
-    borderColor: "#e6e6e6",
   },
   navItem: {
     alignItems: "center",
@@ -526,12 +627,10 @@ const styles = StyleSheet.create({
   navIcon: {
     width: 28,
     height: 28,
-    tintColor: "#0F172A",
     marginBottom: 6,
   },
   navText: {
     fontSize: 13,
-    color: "#0F172A",
     fontFamily: "Inter_400Regular",
   },
   modalOverlay: {
@@ -540,7 +639,6 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   modalBox: {
-    backgroundColor: "#ffffff",
     borderRadius: 20,
     padding: 24,
     width: "85%",
@@ -548,16 +646,15 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.3,
     shadowRadius: 10,
     elevation: 10,
+    borderWidth: 1,
   },
   modalTitle: {
-    color: "#0F172A",
     fontSize: 17,
     fontFamily: "Poppins_700Bold",
     marginBottom: 6,
     textAlign: "center",
   },
   modalSubtitle: {
-    color: "#4B5563",
     fontSize: 13,
     fontFamily: "Poppins_400Regular",
     marginBottom: 18,
@@ -571,12 +668,10 @@ const styles = StyleSheet.create({
     marginTop: 8,
   },
   modalActionTextLight: {
-    color: "#fff",
     fontSize: 14,
     fontFamily: "Poppins_700Bold",
   },
   modalActionTextDark: {
-    color: "#111827",
     fontSize: 14,
     fontFamily: "Poppins_700Bold",
   },

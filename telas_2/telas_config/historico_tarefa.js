@@ -1,60 +1,36 @@
-import React, { useState, useMemo } from "react";
 import {
-  View,
-  Text,
-  StyleSheet,
-  TouchableOpacity,
+  Poppins_400Regular,
+  Poppins_700Bold,
+  useFonts
+} from "@expo-google-fonts/poppins";
+import { useNavigation } from "@react-navigation/native";
+import { useMemo, useState } from "react";
+import {
   Image,
+  Modal,
   ScrollView,
-  Modal
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View
 } from "react-native";
 import { Calendar, LocaleConfig } from "react-native-calendars";
-import { useNavigation } from "@react-navigation/native";
-import {
-  useFonts,
-  Poppins_400Regular,
-  Poppins_700Bold
-} from "@expo-google-fonts/poppins";
-import { useTarefas } from "../../contexts/TarefasContext";
 import arrowIcon from "../../assets_icons/arrow_icon.png";
+import { useTarefas } from "../../contexts/TarefasContext";
+import { useAppTheme } from "../../contexts/ThemeContext";
 
 LocaleConfig.locales["pt-br"] = {
   monthNames: [
-    "Janeiro",
-    "Fevereiro",
-    "Março",
-    "Abril",
-    "Maio",
-    "Junho",
-    "Julho",
-    "Agosto",
-    "Setembro",
-    "Outubro",
-    "Novembro",
-    "Dezembro"
+    "Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho",
+    "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"
   ],
   monthNamesShort: [
-    "Jan",
-    "Fev",
-    "Mar",
-    "Abr",
-    "Mai",
-    "Jun",
-    "Jul",
-    "Ago",
-    "Set",
-    "Out",
-    "Nov",
-    "Dez"
+    "Jan", "Fev", "Mar", "Abr", "Mai", "Jun",
+    "Jul", "Ago", "Set", "Out", "Nov", "Dez"
   ],
   dayNames: [
-    "Domingo",
-    "Segunda-feira",
-    "Terça-feira",
-    "Quarta-feira",
-    "Quinta-feira",
-    "Sexta-feira",
-    "Sábado"
+    "Domingo", "Segunda-feira", "Terça-feira",
+    "Quarta-feira", "Quinta-feira", "Sexta-feira", "Sábado"
   ],
   dayNamesShort: ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"],
   today: "Hoje"
@@ -73,20 +49,14 @@ const parseDDMMYYYY = (s) => {
   const [dd, mm, yyyy] = (s || "").split("/").map(Number);
   if (!dd || !mm || !yyyy) return null;
   const d = new Date(yyyy, mm - 1, dd);
-  if (
-    d.getFullYear() !== yyyy ||
-    d.getMonth() !== mm - 1 ||
-    d.getDate() !== dd
-  ) {
-    return null;
-  }
+  if (d.getFullYear() !== yyyy || d.getMonth() !== mm - 1 || d.getDate() !== dd) return null;
   return startOfDay(d);
 };
 
 const formatISO = (d) => {
   const y = d.getFullYear();
-  const m = `${d.getMonth() + 1}`.padStart(2, "0");
-  const dd = `${d.getDate()}`.padStart(2, "0");
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const dd = String(d.getDate()).padStart(2, "0");
   return `${y}-${m}-${dd}`;
 };
 
@@ -94,6 +64,7 @@ const sameDay = (a, b) => startOfDay(a).getTime() === startOfDay(b).getTime();
 
 export default function HistoricoTarefa() {
   const navigation = useNavigation();
+  const { colors } = useAppTheme();
   const { tarefas, historicoTarefas } = useTarefas();
 
   const [monthSelectedISO, setMonthSelectedISO] = useState(formatISO(today()));
@@ -122,36 +93,38 @@ export default function HistoricoTarefa() {
       marks[key] = {
         ...(marks[key] || {}),
         marked: true,
-        dotColor: "#ff005c"
+        dotColor: colors.accent
       };
     });
 
     marks[monthSelectedISO] = {
       ...(marks[monthSelectedISO] || {}),
       selected: true,
-      selectedColor: "#ff005c",
+      selectedColor: colors.accent,
       marked: marks[monthSelectedISO]?.marked || false
     };
 
     return marks;
-  }, [todasTarefas, monthSelectedISO]);
+  }, [todasTarefas, monthSelectedISO, colors]);
 
   const tarefasDoDia = useMemo(() => {
     const [y, m, d] = monthSelectedISO.split("-").map(Number);
-    const selDate = startOfDay(new Date(y, m - 1, d));
+    const sel = startOfDay(new Date(y, m - 1, d));
 
     return todasTarefas.filter((t) => {
       const dt = parseDDMMYYYY(t.concluirAte);
       if (!dt) return false;
-      return sameDay(dt, selDate);
+      return sameDay(dt, sel);
     });
   }, [todasTarefas, monthSelectedISO]);
 
+  const styles = useMemo(() => makeStyles(colors), [colors]);
+
   if (!fontsLoaded) {
-    return <View style={{ flex: 1, backgroundColor: "#f6f6f6" }} />;
+    return <View style={{ flex: 1, backgroundColor: colors.background }} />;
   }
 
-  const CardTarefaHistorico = ({ item }) => (
+  const CardTarefa = ({ item }) => (
     <TouchableOpacity
       activeOpacity={0.9}
       onPress={() => {
@@ -195,6 +168,7 @@ export default function HistoricoTarefa() {
         <TouchableOpacity onPress={() => navigation.goBack()}>
           <Image source={arrowIcon} style={styles.backIcon} />
         </TouchableOpacity>
+
         <Text style={styles.headerTitle}>Histórico de tarefas</Text>
       </View>
 
@@ -210,16 +184,16 @@ export default function HistoricoTarefa() {
             hideExtraDays={false}
             enableSwipeMonths
             theme={{
-              backgroundColor: "#e4e4e4",
-              calendarBackground: "#e4e4e4",
-              dayTextColor: "#0F172A",
-              monthTextColor: "#0F172A",
-              textDisabledColor: "#9CA3AF",
-              arrowColor: "#ff005c",
-              todayTextColor: "#ff005c",
-              textSectionTitleColor: "#6B7280",
-              selectedDayBackgroundColor: "#ff005c",
-              selectedDayTextColor: "#ffffff"
+              backgroundColor: colors.card,
+              calendarBackground: colors.card,
+              dayTextColor: colors.textPrimary,
+              monthTextColor: colors.textPrimary,
+              textDisabledColor: colors.textMuted,
+              arrowColor: colors.accent,
+              todayTextColor: colors.accent,
+              textSectionTitleColor: colors.textSecondary,
+              selectedDayBackgroundColor: colors.accent,
+              selectedDayTextColor: colors.accentText
             }}
           />
         </View>
@@ -232,10 +206,7 @@ export default function HistoricoTarefa() {
           </View>
         ) : (
           tarefasDoDia.map((t) => (
-            <CardTarefaHistorico
-              key={t.id || Math.random().toString()}
-              item={t}
-            />
+            <CardTarefa key={t.id || Math.random().toString()} item={t} />
           ))
         )}
 
@@ -287,148 +258,144 @@ export default function HistoricoTarefa() {
   );
 }
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: "#f6f6f6"
-  },
-
-  header: {
-    paddingTop: 50,
-    paddingBottom: 16,
-    paddingHorizontal: 20,
-    flexDirection: "row",
-    alignItems: "center"
-  },
-  backIcon: {
-    width: 36,
-    height: 36,
-    tintColor: "#0F172A",
-    marginRight: 10
-  },
-  headerTitle: {
-    fontSize: 18,
-    fontFamily: "Poppins_700Bold",
-    color: "#0F172A"
-  },
-
-  scrollContent: {
-    paddingHorizontal: 20,
-    paddingBottom: 40
-  },
-
-  calendarCard: {
-    backgroundColor: "#e4e4e4",
-    borderRadius: 16,
-    padding: 10,
-    marginTop: 6,
-    marginBottom: 16,
-    borderWidth: 1,
-    borderColor: "#e6e6e6"
-  },
-
-  emptyBox: {
-    backgroundColor: "#ededed",
-    borderRadius: 12,
-    padding: 18,
-    alignItems: "center",
-    marginTop: 10,
-    borderWidth: 1,
-    borderColor: "#e6e6e6"
-  },
-  emptyText: {
-    color: "#4B5563",
-    fontFamily: "Poppins_400Regular",
-    fontSize: 13
-  },
-
-  card: {
-    backgroundColor: "#ededed",
-    borderRadius: 16,
-    padding: 16,
-    marginTop: 12,
-    borderWidth: 1,
-    borderColor: "#cfcfcf"
-  },
-  cardHeaderRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between"
-  },
-  cardTitle: {
-    color: "#0F172A",
-    fontSize: 16,
-    fontFamily: "Poppins_700Bold",
-    maxWidth: "70%"
-  },
-  badge: {
-    backgroundColor: "#e6e6e6",
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 10
-  },
-  badgeText: {
-    color: "#374151",
-    fontSize: 12,
-    fontFamily: "Poppins_400Regular"
-  },
-  cardDesc: {
-    color: "#4B5563",
-    fontSize: 13,
-    fontFamily: "Poppins_400Regular",
-    marginTop: 10
-  },
-  cardDue: {
-    color: "#6B7280",
-    fontSize: 12,
-    fontFamily: "Poppins_400Regular",
-    marginTop: 8
-  },
-
-  detailOverlay: {
-    flex: 1,
-    backgroundColor: "rgba(0,0,0,0.35)",
-    justifyContent: "center",
-    alignItems: "center",
-    paddingHorizontal: 24
-  },
-  detailBox: {
-    backgroundColor: "#ffffff",
-    borderRadius: 16,
-    padding: 20,
-    width: "100%",
-    borderWidth: 1,
-    borderColor: "#e6e6e6"
-  },
-  detailTitle: {
-    color: "#0F172A",
-    fontSize: 18,
-    fontFamily: "Poppins_700Bold",
-    marginBottom: 8
-  },
-  detailDesc: {
-    color: "#374151",
-    fontSize: 14,
-    fontFamily: "Poppins_400Regular",
-    marginBottom: 10
-  },
-  detailDate: {
-    color: "#6B7280",
-    fontSize: 13,
-    fontFamily: "Poppins_400Regular",
-    marginBottom: 6
-  },
-  detailStatus: {
-    color: "#4B5563",
-    fontSize: 13,
-    fontFamily: "Poppins_400Regular",
-    marginBottom: 18
-  },
-  detailClose: {
-    color: "#ff005c",
-    fontFamily: "Poppins_700Bold",
-    textAlign: "center",
-    marginTop: 10,
-    fontSize: 15
-  }
-});
+function makeStyles(colors) {
+  return StyleSheet.create({
+    container: {
+      flex: 1,
+      backgroundColor: colors.background
+    },
+    header: {
+      paddingTop: 50,
+      paddingBottom: 16,
+      paddingHorizontal: 20,
+      flexDirection: "row",
+      alignItems: "center"
+    },
+    backIcon: {
+      width: 36,
+      height: 36,
+      tintColor: colors.icon,
+      marginRight: 10
+    },
+    headerTitle: {
+      fontSize: 18,
+      fontFamily: "Poppins_700Bold",
+      color: colors.textTitle
+    },
+    scrollContent: {
+      paddingHorizontal: 20,
+      paddingBottom: 40
+    },
+    calendarCard: {
+      backgroundColor: colors.card,
+      borderRadius: 16,
+      padding: 10,
+      marginTop: 6,
+      marginBottom: 16,
+      borderWidth: 1,
+      borderColor: colors.border
+    },
+    emptyBox: {
+      backgroundColor: colors.input,
+      borderRadius: 12,
+      padding: 18,
+      alignItems: "center",
+      marginTop: 10,
+      borderWidth: 1,
+      borderColor: colors.border
+    },
+    emptyText: {
+      color: colors.textBody,
+      fontFamily: "Poppins_400Regular",
+      fontSize: 13
+    },
+    card: {
+      backgroundColor: colors.input,
+      borderRadius: 16,
+      padding: 16,
+      marginTop: 12,
+      borderWidth: 1,
+      borderColor: colors.softBorder
+    },
+    cardHeaderRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "space-between"
+    },
+    cardTitle: {
+      color: colors.textTitle,
+      fontSize: 16,
+      fontFamily: "Poppins_700Bold",
+      maxWidth: "70%"
+    },
+    badge: {
+      backgroundColor: colors.badgeBg,
+      paddingHorizontal: 10,
+      paddingVertical: 4,
+      borderRadius: 10
+    },
+    badgeText: {
+      color: colors.textSecondary,
+      fontSize: 12,
+      fontFamily: "Poppins_400Regular"
+    },
+    cardDesc: {
+      color: colors.textBody,
+      fontSize: 13,
+      fontFamily: "Poppins_400Regular",
+      marginTop: 10
+    },
+    cardDue: {
+      color: colors.textSecondary,
+      fontSize: 12,
+      fontFamily: "Poppins_400Regular",
+      marginTop: 8
+    },
+    detailOverlay: {
+      flex: 1,
+      backgroundColor: colors.overlay,
+      justifyContent: "center",
+      alignItems: "center",
+      paddingHorizontal: 24
+    },
+    detailBox: {
+      backgroundColor: colors.card,
+      borderRadius: 16,
+      padding: 20,
+      width: "100%",
+      borderWidth: 1,
+      borderColor: colors.border
+    },
+    detailTitle: {
+      color: colors.textTitle,
+      fontSize: 18,
+      fontFamily: "Poppins_700Bold",
+      marginBottom: 8
+    },
+    detailDesc: {
+      color: colors.textBody,
+      fontSize: 14,
+      fontFamily: "Poppins_400Regular",
+      marginBottom: 10
+    },
+    detailDate: {
+      color: colors.textSecondary,
+      fontSize: 13,
+      fontFamily: "Poppins_400Regular",
+      marginBottom: 6
+    },
+    detailStatus: {
+      color: colors.textBody,
+      fontSize: 13,
+      fontFamily: "Poppins_400Regular",
+      marginBottom: 18
+    },
+    detailClose: {
+      color: colors.accent,
+      fontFamily: "Poppins_700Bold",
+      textAlign: "center",
+      marginTop: 10,
+      fontSize: 15
+    }
+  });
+}

@@ -10,6 +10,7 @@ import {
   ScrollView,
   KeyboardAvoidingView,
   Platform,
+  ActivityIndicator,
 } from "react-native";
 import { useNavigation } from "@react-navigation/native";
 import { Ionicons } from "@expo/vector-icons";
@@ -30,6 +31,7 @@ export default function TelaCadastro() {
 
   const [erroEmailServidor, setErroEmailServidor] = useState("");
   const [erroGlobal, setErroGlobal] = useState("");
+  const [loading, setLoading] = useState(false);
 
   const validarEmail = (e) =>
     /^[^\s@]+@[^\s@]+\.[a-zA-Z]{2,3}(\.[a-zA-Z]{2,3})?$/.test(e.trim());
@@ -47,10 +49,11 @@ export default function TelaCadastro() {
     aceitaTermos;
 
   const handleFinalizar = async () => {
-    if (!podeFinalizar) return;
+    if (!podeFinalizar || loading) return;
 
     setErroEmailServidor("");
     setErroGlobal("");
+    setLoading(true);
 
     try {
       await signup({ username, email, password: senha });
@@ -65,6 +68,8 @@ export default function TelaCadastro() {
       } else {
         setErroGlobal("Não foi possível cadastrar. Tente novamente.");
       }
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -180,7 +185,6 @@ export default function TelaCadastro() {
               <Text style={styles.erro}>As senhas não coincidem</Text>
             )}
 
-            {/* AGORA O CHECKBOX FICA AQUI – abaixo do confirmar senha */}
             <View style={styles.checkboxContainer}>
               <Pressable
                 style={[styles.checkbox, aceitaTermos && styles.checkboxAtivo]}
@@ -204,12 +208,26 @@ export default function TelaCadastro() {
             <TouchableOpacity
               style={[
                 styles.botaoFinalizar,
-                !podeFinalizar && { opacity: 0.5 },
+                (!podeFinalizar || loading) && { opacity: 0.5 },
               ]}
               onPress={handleFinalizar}
-              disabled={!podeFinalizar}
+              disabled={!podeFinalizar || loading}
             >
-              <Text style={styles.textoBotaoFinalizar}>Finalizar</Text>
+              {loading ? (
+                <View style={{ flexDirection: "row", alignItems: "center" }}>
+                  <ActivityIndicator size="small" color="#FFFFFF" />
+                  <Text
+                    style={[
+                      styles.textoBotaoFinalizar,
+                      { marginLeft: 8 },
+                    ]}
+                  >
+                    Cadastrando...
+                  </Text>
+                </View>
+              ) : (
+                <Text style={styles.textoBotaoFinalizar}>Finalizar</Text>
+              )}
             </TouchableOpacity>
 
             <TouchableOpacity
@@ -235,7 +253,7 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     paddingHorizontal: 24,
-    paddingTop: 56,
+    paddingTop: 40,
     justifyContent: "flex-start",
     backgroundColor: "#FFFFFF",
   },
@@ -243,17 +261,17 @@ const styles = StyleSheet.create({
     fontSize: 23,
     color: "#1F1F1F",
     fontFamily: "Poppins_700Bold",
-    marginBottom: 20,
+    marginBottom: 10,
     textAlign: "left",
   },
   conteudo: {
-    marginTop: -30,
+    marginTop: -25,
   },
   imagemCentral: {
     width: width * 0.7,
     height: 100,
     alignSelf: "center",
-    marginBottom: 20,
+    marginBottom: 14,
     borderRadius: 10,
   },
   label: {
@@ -299,8 +317,8 @@ const styles = StyleSheet.create({
     padding: 12,
     borderRadius: 12,
     alignItems: "center",
-    marginTop: 12,
-    marginBottom: 12,
+    marginTop: 26,          // mais espaço acima
+    marginBottom: 10,
     shadowColor: "#E10D6F",
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.25,
@@ -318,7 +336,7 @@ const styles = StyleSheet.create({
     padding: 10,
     borderRadius: 12,
     alignItems: "center",
-    marginBottom: 14,
+    marginBottom: 10,
     backgroundColor: "#FFFFFF",
   },
   textoBotaoEntrar: {
@@ -329,8 +347,8 @@ const styles = StyleSheet.create({
   checkboxContainer: {
     flexDirection: "row",
     alignItems: "center",
-    marginTop: 8,
-    marginBottom: 10,
+    marginTop: 4,
+    marginBottom: 22,      // mais espaço abaixo
     justifyContent: "center",
   },
   checkbox: {
