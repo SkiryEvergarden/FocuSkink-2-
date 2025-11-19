@@ -208,13 +208,14 @@ export default function TelaInicio() {
               <Text style={styles.sequenceSubtitle}>Leia um artigo para manter sua sequência ativa hoje.</Text>
             </View>
 
-            {showFireBig && (
+            {showFireBig && isFocused && (
               <Video
+                key={isDark ? "fire-dark" : "fire-light"}
                 ref={fireVideoRef}
                 source={videoSource}
                 style={styles.fireIconBig}
                 isLooping
-                shouldPlay={isFocused}
+                shouldPlay
                 resizeMode="contain"
               />
             )}

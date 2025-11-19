@@ -8,6 +8,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { useNavigation } from "@react-navigation/native";
 import { Audio } from "expo-av";
 import { BlurView } from "expo-blur";
+import { activateKeepAwake, deactivateKeepAwake } from "expo-keep-awake";
 import { LinearGradient } from "expo-linear-gradient";
 import {
   useCallback,
@@ -610,6 +611,18 @@ export default function TelaTarefas() {
       })();
     };
   }, [sound]);
+
+  useEffect(() => {
+    const tag = "sessao-timer";
+    if (sessao.isRunning) {
+      activateKeepAwake(tag);
+    } else {
+      deactivateKeepAwake(tag);
+    }
+    return () => {
+      deactivateKeepAwake(tag);
+    };
+  }, [sessao.isRunning]);
 
   const stopAndClearPlayer = useCallback(async () => {
     if (isStoppingRef.current) return;
