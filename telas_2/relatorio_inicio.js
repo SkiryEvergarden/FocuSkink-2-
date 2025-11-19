@@ -81,7 +81,7 @@ const styles = (colors) =>
       tintColor: colors.icon,
     },
     title: {
-      fontSize: 20,
+      fontSize: 17,
       fontFamily: "Poppins_700Bold",
       color: colors.textTitle,
     },
