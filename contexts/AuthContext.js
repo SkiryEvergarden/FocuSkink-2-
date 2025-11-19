@@ -1,5 +1,5 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import * as FileSystem from "expo-file-system";
+import * as FileSystem from "expo-file-system/legacy";
 import {
   createUserWithEmailAndPassword,
   deleteUser,
@@ -7,7 +7,7 @@ import {
   onAuthStateChanged,
   sendPasswordResetEmail,
   signInWithEmailAndPassword,
-  signOut,
+  signOut
 } from "firebase/auth";
 import { doc, getDoc, setDoc } from "firebase/firestore";
 import {
@@ -15,7 +15,7 @@ import {
   useContext,
   useEffect,
   useMemo,
-  useState,
+  useState
 } from "react";
 import { auth, db } from "../firebaseConfig";
 
@@ -31,7 +31,7 @@ async function buildUserFromFirebase(fbUser) {
     email: fbUser.email,
     username: profile.username || fbUser.displayName || "",
     avatarUri: profile.avatarUri || null,
-    createdAt: profile.createdAt || fbUser.metadata?.creationTime || null,
+    createdAt: profile.createdAt || fbUser.metadata?.creationTime || null
   };
 }
 
@@ -47,7 +47,7 @@ export const AuthProvider = ({ children }) => {
           const localAvatar = await AsyncStorage.getItem("localAvatarUri");
           setCurrentUser({
             ...user,
-            avatarUri: localAvatar || user.avatarUri || null,
+            avatarUri: localAvatar || user.avatarUri || null
           });
         } else {
           setCurrentUser(null);
@@ -84,13 +84,13 @@ export const AuthProvider = ({ children }) => {
         email: trimmedEmail,
         username: trimmedUsername,
         avatarUri: null,
-        createdAt,
+        createdAt
       });
       const prefsRef = doc(db, "users", cred.user.uid, "state", "preferences");
       await setDoc(
         prefsRef,
         {
-          themeMode: "light",
+          themeMode: "light"
         },
         { merge: true }
       );
@@ -114,7 +114,7 @@ export const AuthProvider = ({ children }) => {
       const localAvatar = await AsyncStorage.getItem("localAvatarUri");
       setCurrentUser({
         ...user,
-        avatarUri: localAvatar || user.avatarUri || null,
+        avatarUri: localAvatar || user.avatarUri || null
       });
       return user;
     } catch (e) {
@@ -183,7 +183,7 @@ export const AuthProvider = ({ children }) => {
 
         await FileSystem.copyAsync({
           from: avatarUri,
-          to: localPath,
+          to: localPath
         });
 
         await AsyncStorage.setItem("localAvatarUri", localPath);
@@ -200,7 +200,7 @@ export const AuthProvider = ({ children }) => {
 
     if (updates.username) {
       await fbUpdateProfile(auth.currentUser, {
-        displayName: updates.username,
+        displayName: updates.username
       });
     }
 
@@ -213,7 +213,7 @@ export const AuthProvider = ({ children }) => {
             username:
               updates.username !== undefined ? updates.username : prev.username,
             avatarUri:
-              avatarUri !== undefined ? localAvatar : prev.avatarUri,
+              avatarUri !== undefined ? localAvatar : prev.avatarUri
           }
         : prev
     );
@@ -244,12 +244,10 @@ export const AuthProvider = ({ children }) => {
     logout,
     deleteAccount,
     updateProfile,
-    resetPassword,
+    resetPassword
   };
 
-  return (
-    <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
-  );
+  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 };
 
 export const useAuth = () => {

@@ -345,6 +345,8 @@ function StepModal({
   styles,
   colors,
   isDark,
+  step,
+  totalSteps,
 }) {
   return (
     <View style={styles.fullOverlay}>
@@ -363,6 +365,12 @@ function StepModal({
           </TouchableOpacity>
           <Text style={styles.modalHeaderTitle}>{title}</Text>
         </View>
+
+        {typeof step === "number" && typeof totalSteps === "number" && (
+          <Text style={styles.stepIndicator}>
+            {`Passo ${step} de ${totalSteps}`}
+          </Text>
+        )}
 
         <View style={styles.selectorHeaderBox}>
           <View style={styles.inlineBox}>
@@ -432,7 +440,7 @@ export default function TelaTarefas() {
     Inter_600SemiBold,
   });
 
-  const [selected, setSelected] = useState("Tarefas");
+  const [selected, setSelected] = useState("Sessão");
 
   const [showConfig, setShowConfig] = useState(false);
   const [showSelTarefa, setShowSelTarefa] = useState(false);
@@ -479,6 +487,21 @@ export default function TelaTarefas() {
   const actionLockRef = useRef(false);
   const isStoppingRef = useRef(false);
 
+  const [showFocusStartModal, setShowFocusStartModal] = useState(false);
+  const [showFocusEndModal, setShowFocusEndModal] = useState(false);
+  const [pendingFocusReminder, setPendingFocusReminder] = useState(false);
+  const prevSessaoRef = useRef(sessao);
+
+  const alarmSoundRef = useRef(null);
+  const [alarmLoaded, setAlarmLoaded] = useState(false);
+
+  useEffect(() => {
+    const unsubscribe = navigation.addListener("focus", () => {
+      setSelected("Sessão");
+    });
+    return unsubscribe;
+  }, [navigation]);
+
   useEffect(() => {
     (async () => {
       try {
@@ -494,6 +517,73 @@ export default function TelaTarefas() {
       }
     })();
   }, []);
+
+  useEffect(() => {
+    let mounted = true;
+    const loadAlarm = async () => {
+      try {
+        const { sound } = await Audio.Sound.createAsync(
+          require("../assets_audios/alarmesound.mp3")
+        );
+        if (!mounted) {
+          await sound.unloadAsync();
+          return;
+        }
+        alarmSoundRef.current = sound;
+        setAlarmLoaded(true);
+      } catch (e) {
+        console.warn("alarm load error:", e);
+      }
+    };
+    loadAlarm();
+    return () => {
+      mounted = false;
+      if (alarmSoundRef.current) {
+        alarmSoundRef.current
+          .unloadAsync()
+          .catch((err) => console.warn("alarm unload error:", err));
+        alarmSoundRef.current = null;
+      }
+    };
+  }, []);
+
+  useEffect(() => {
+    if (
+      !sessao.isRunning ||
+      sessao.paused ||
+      sessao.remainingSec !== 10 ||
+      !alarmLoaded ||
+      !alarmSoundRef.current
+    ) {
+      return;
+    }
+    (async () => {
+      try {
+        await alarmSoundRef.current.setPositionAsync(0);
+        await alarmSoundRef.current.playAsync();
+      } catch (e) {
+        console.warn("alarm play error:", e);
+      }
+    })();
+  }, [sessao.isRunning, sessao.paused, sessao.remainingSec, alarmLoaded]);
+
+  useEffect(() => {
+    const prev = prevSessaoRef.current;
+
+    if (!prev.isRunning && sessao.isRunning && sessao.focoAtivo) {
+      setShowFocusStartModal(true);
+    }
+
+    if (prev.isRunning && !sessao.isRunning && prev.focoAtivo) {
+      if (prev.tarefaSelecionada) {
+        setPendingFocusReminder(true);
+      } else {
+        setShowFocusEndModal(true);
+      }
+    }
+
+    prevSessaoRef.current = sessao;
+  }, [sessao]);
 
   useEffect(() => {
     const sub = AppState.addEventListener("change", async (st) => {
@@ -721,10 +811,17 @@ export default function TelaTarefas() {
   }
 
   const taskReviewVisible = !!(
-    sessao.finishedPendingReview && sessao.tarefaSelecionada
+    sessao.finishedPendingReview &&
+    sessao.tarefaSelecionada &&
+    !showFocusEndModal
   );
 
   function confirmarTerminouTarefa() {
+    const shouldShowFocusReminder = pendingFocusReminder;
+    if (shouldShowFocusReminder) {
+      setShowFocusEndModal(true);
+      setPendingFocusReminder(false);
+    }
     if (sessao.tarefaSelecionada && concluirTarefa) {
       concluirTarefa(sessao.tarefaSelecionada.id);
     }
@@ -734,6 +831,11 @@ export default function TelaTarefas() {
     });
   }
   function naoTerminouTarefa() {
+    const shouldShowFocusReminder = pendingFocusReminder;
+    if (shouldShowFocusReminder) {
+      setShowFocusEndModal(true);
+      setPendingFocusReminder(false);
+    }
     if (sessaoCtx.finishReviewAndReset) sessaoCtx.finishReviewAndReset();
     InteractionManager.runAfterInteractions(() => {
       resetCampos();
@@ -1003,7 +1105,7 @@ export default function TelaTarefas() {
                   screen: "Inicio",
                 },
                 {
-                  name: "Tarefas",
+                  name: "Sessão",
                   icon: require("../assets_icons/tarefas_icon.png"),
                   screen: "TelaTarefas",
                 },
@@ -1289,13 +1391,13 @@ export default function TelaTarefas() {
                       colors={colors}
                     />
                   )}
-                  ListEmptyComponent={
+                  ListEmptyComponent={(
                     <View style={styles.emptyBox}>
                       <Text style={styles.emptyText}>
                         Nenhuma tarefa para este dia.
                       </Text>
                     </View>
-                  }
+                  )}
                   contentContainerStyle={{
                     paddingHorizontal: 16,
                     paddingBottom: 110,
@@ -1584,6 +1686,8 @@ export default function TelaTarefas() {
           styles={styles}
           colors={colors}
           isDark={isDark}
+          step={1}
+          totalSteps={3}
         />
       </Modal>
 
@@ -1605,6 +1709,8 @@ export default function TelaTarefas() {
           styles={styles}
           colors={colors}
           isDark={isDark}
+          step={2}
+          totalSteps={3}
         />
       </Modal>
 
@@ -1624,6 +1730,8 @@ export default function TelaTarefas() {
           styles={styles}
           colors={colors}
           isDark={isDark}
+          step={3}
+          totalSteps={3}
         />
       </Modal>
 
@@ -1762,8 +1870,8 @@ export default function TelaTarefas() {
                 quantas horas e minutos a sessão terá.
                 {"\n\n"}
                 • <Text style={{ fontWeight: "600" }}>Nome da sessão</Text>:
-                ajuda a lembrar qual é o objetivo daquela sessão (ex.: &quot;Estudar
-                Matemática&quot;, &quot;Projeto TCC&quot;).
+                ajuda a lembrar qual é o objetivo daquela sessão (ex.:
+                &quot;Estudar Matemática&quot;, &quot;Projeto TCC&quot;).
                 {"\n\n"}
                 • <Text style={{ fontWeight: "600" }}>Tarefa</Text> (opcional):
                 você pode vincular a sessão a uma tarefa criada na tela de
@@ -1773,10 +1881,18 @@ export default function TelaTarefas() {
                 escolha playlists ou músicas para tocar enquanto estuda ou
                 trabalha.
                 {"\n\n"}
-                • <Text style={{ fontWeight: "600" }}>Modo foco</Text>: quando
-                ativado, ele bloqueia as notificações do celular durante a
-                sessão. Ao finalizar ou interromper a sessão, tudo volta ao
-                normal.
+                • <Text style={{ fontWeight: "600" }}>Modo foco</Text>: quando 
+                ativado, o aplicativo recomenda que você ative o modo &quot;Não
+                Perturbe&quot; do celular antes de iniciar a sessão. Isso ajuda
+                a evitar interrupções e manter a concentração total. Ao
+                finalizar a sessão, o app mostrará um lembrete para desativar o
+                &quot;Não Perturbe&quot; se ele estiver ligado.
+                {"\n\n"}
+                • <Text style={{ fontWeight: "600" }}>Alarme do cronômetro</Text>:
+                nos últimos segundos de cada contagem o app toca um pequeno
+                alarme. Para ouvir esse som, lembre-se de deixar o volume do
+                dispositivo acima do zero. Se você não quiser ouvir o alarme,
+                basta diminuir o volume do celular.
               </Text>
             </ScrollView>
 
@@ -1835,6 +1951,72 @@ export default function TelaTarefas() {
                 size={16}
                 color={colors.textPrimary}
               />
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+
+      <Modal transparent visible={showFocusStartModal} animationType="fade">
+        <View style={styles.centerOverlay}>
+          <BlurView
+            intensity={80}
+            tint={isDark ? "dark" : "light"}
+            style={[
+              RNStyleSheet.absoluteFill,
+              isDark && { backgroundColor: "rgba(0,0,0,0.6)" },
+            ]}
+          />
+          <View style={styles.confirmBox}>
+            <Text style={styles.confirmTitle}>
+              Ative o modo &quot;Não perturbe&quot;
+            </Text>
+            <Text style={styles.confirmSub}>
+              Para evitar interrupções durante a sessão de foco, ative o modo
+              &quot;Não perturbe&quot; do seu celular. Assim, notificações e
+              chamadas serão silenciadas enquanto você estuda.
+            </Text>
+
+            <TouchableOpacity
+              style={[styles.confirmBtn, { backgroundColor: colors.accent }]}
+              onPress={() => setShowFocusStartModal(false)}
+            >
+              <Text style={[styles.confirmTxt, { color: "#fff" }]}>
+                Entendi
+              </Text>
+              <Ionicons name="checkmark" size={16} color="#fff" />
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+
+      <Modal transparent visible={showFocusEndModal} animationType="fade">
+        <View style={styles.centerOverlay}>
+          <BlurView
+            intensity={80}
+            tint={isDark ? "dark" : "light"}
+            style={[
+              RNStyleSheet.absoluteFill,
+              isDark && { backgroundColor: "rgba(0,0,0,0.6)" },
+            ]}
+          />
+          <View style={styles.confirmBox}>
+            <Text style={styles.confirmTitle}>
+              Lembrete de &quot;Não perturbe&quot;
+            </Text>
+            <Text style={styles.confirmSub}>
+              Se você ativou o modo &quot;Não perturbe&quot; para esta sessão,
+              lembre-se de desativá-lo quando terminar para voltar a receber
+              suas notificações normalmente.
+            </Text>
+
+            <TouchableOpacity
+              style={[styles.confirmBtn, { backgroundColor: colors.accent }]}
+              onPress={() => setShowFocusEndModal(false)}
+            >
+              <Text style={[styles.confirmTxt, { color: "#fff" }]}>
+                Entendi
+              </Text>
+              <Ionicons name="checkmark" size={16} color="#fff" />
             </TouchableOpacity>
           </View>
         </View>
@@ -2512,5 +2694,12 @@ const createStyles = (colors, isDark) =>
     emptyText: {
       color: colors.textSecondary,
       fontFamily: "Inter_400Regular",
+    },
+
+    stepIndicator: {
+      color: colors.textSecondary,
+      fontSize: 12,
+      fontFamily: "Inter_500Medium",
+      marginBottom: 8,
     },
   });

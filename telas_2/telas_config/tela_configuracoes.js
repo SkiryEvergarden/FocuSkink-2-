@@ -340,7 +340,7 @@ export default function TelaDefinicoes() {
                 screen: "Inicio",
               },
               {
-                name: "Tarefas",
+                name: "Sessão",
                 icon: require("../../assets_icons/tarefas_icon.png"),
                 screen: "TelaTarefas",
               },

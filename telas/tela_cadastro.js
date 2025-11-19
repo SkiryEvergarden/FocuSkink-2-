@@ -1,19 +1,19 @@
-import React, { useState } from "react";
+import { Ionicons } from "@expo/vector-icons";
+import { useNavigation } from "@react-navigation/native";
+import { useState } from "react";
 import {
-  View,
+  ActivityIndicator,
+  Dimensions,
+  KeyboardAvoidingView,
+  Platform,
+  Pressable,
+  ScrollView,
+  StyleSheet,
   Text,
   TextInput,
   TouchableOpacity,
-  StyleSheet,
-  Pressable,
-  Dimensions,
-  ScrollView,
-  KeyboardAvoidingView,
-  Platform,
-  ActivityIndicator,
+  View,
 } from "react-native";
-import { useNavigation } from "@react-navigation/native";
-import { Ionicons } from "@expo/vector-icons";
 import { useAuth } from "../contexts/AuthContext";
 
 export default function TelaCadastro() {
@@ -88,11 +88,11 @@ export default function TelaCadastro() {
         overScrollMode="never"
       >
         <View style={styles.container}>
-          <Text style={styles.titulo}>Cadastrar</Text>
+          <Text style={styles.title}>Cadastrar</Text>
+
+          <View style={styles.imagemCentral} />
 
           <View style={styles.conteudo}>
-            <View style={styles.imagemCentral} />
-
             <Text style={styles.label}>Nome de usuário</Text>
             <TextInput
               style={styles.input}
@@ -234,7 +234,7 @@ export default function TelaCadastro() {
               style={styles.botaoEntrar}
               onPress={() => navigation.navigate("Login")}
             >
-              <Text style={styles.textoBotaoEntrar}>Entrar</Text>
+              <Text style={styles.textoBotaoEntrar}>Já possui uma conta?</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -253,19 +253,19 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     paddingHorizontal: 24,
-    paddingTop: 40,
+    paddingTop: 64, 
     justifyContent: "flex-start",
     backgroundColor: "#FFFFFF",
   },
-  titulo: {
-    fontSize: 23,
+  title: {
+    fontSize: 23, 
     color: "#1F1F1F",
     fontFamily: "Poppins_700Bold",
-    marginBottom: 10,
+    marginBottom: 12,
     textAlign: "left",
   },
   conteudo: {
-    marginTop: -25,
+    marginTop: -25, 
   },
   imagemCentral: {
     width: width * 0.7,
@@ -317,7 +317,7 @@ const styles = StyleSheet.create({
     padding: 12,
     borderRadius: 12,
     alignItems: "center",
-    marginTop: 26,          // mais espaço acima
+    marginTop: 26,
     marginBottom: 10,
     shadowColor: "#E10D6F",
     shadowOffset: { width: 0, height: 2 },
@@ -348,7 +348,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     marginTop: 4,
-    marginBottom: 22,      // mais espaço abaixo
+    marginBottom: 22,
     justifyContent: "center",
   },
   checkbox: {

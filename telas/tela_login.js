@@ -1,19 +1,19 @@
-import React, { useState } from "react";
+import { Ionicons } from "@expo/vector-icons";
+import { useNavigation } from "@react-navigation/native";
+import { useState } from "react";
 import {
-  View,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  Image,
-  StyleSheet,
+  ActivityIndicator,
   Dimensions,
+  Image,
   KeyboardAvoidingView,
   Platform,
   ScrollView,
-  ActivityIndicator,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
 } from "react-native";
-import { Ionicons } from "@expo/vector-icons";
-import { useNavigation } from "@react-navigation/native";
 import { useAuth } from "../contexts/AuthContext";
 
 export default function TelaLogin() {
@@ -165,7 +165,7 @@ export default function TelaLogin() {
               onPress={() => navigation.navigate("Cadastro")}
               disabled={loading}
             >
-              <Text style={styles.textoBotaoCadastrar}>Cadastrar</Text>
+              <Text style={styles.textoBotaoCadastrar}>Não tem conta?</Text>
             </TouchableOpacity>
           </View>
         </View>

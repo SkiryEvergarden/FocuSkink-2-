@@ -2,7 +2,7 @@ import { Ionicons } from "@expo/vector-icons"
 import { useNavigation } from "@react-navigation/native"
 import { BlurView } from "expo-blur"
 import { LinearGradient } from "expo-linear-gradient"
-import { useEffect, useMemo, useRef, useState } from "react"
+import { useMemo, useRef, useState } from "react"
 import {
   Animated,
   Dimensions,
@@ -60,14 +60,6 @@ const daysDiffFromToday = (d) => {
   return Math.floor((t1-t0)/(1000*60*60*24))
 }
 const sameDay = (a,b) => startOfDay(a).getTime() === startOfDay(b).getTime()
-const getNext7Days = () => {
-  const base = today()
-  return Array.from({length:7},(_,i)=>{
-    const d = new Date(base)
-    d.setDate(base.getDate()+i)
-    return d
-  })
-}
 
 export default function Tela_Geren_Tarefas(){
   const navigation = useNavigation()
@@ -76,9 +68,6 @@ export default function Tela_Geren_Tarefas(){
 
   const tabs = ["Atrasadas","Diário","Semanal","Mensal","Concluídas"]
   const [selectedTab,setSelectedTab] = useState("Diário")
-
-  const [weekDays,setWeekDays] = useState(getNext7Days())
-  const [weekSelectedDate,setWeekSelectedDate] = useState(weekDays[0])
 
   const [monthSelectedISO,setMonthSelectedISO] = useState(formatISO(today()))
 
@@ -100,15 +89,6 @@ export default function Tela_Geren_Tarefas(){
   const [concluirAte,setConcluirAte] = useState("")
   const [descricao,setDescricao] = useState("")
   const [erroData,setErroData] = useState("")
-
-  useEffect(()=>{
-    const id = setInterval(()=>{
-      const next = getNext7Days()
-      setWeekDays(next)
-      setWeekSelectedDate(next[0])
-    },60*60*1000)
-    return ()=>clearInterval(id)
-  },[])
 
   function formatarData(texto){
     const numeros = texto.replace(/\D/g,"")
@@ -200,11 +180,7 @@ export default function Tela_Geren_Tarefas(){
   },[tarefas,selectedTab])
 
   const tarefasFiltradas = useMemo(()=>{
-    if(["Diário","Concluídas","Atrasadas"].includes(selectedTab)) return basePorAba
-    if(selectedTab==="Semanal") return basePorAba.filter(t=>{
-      const d = parseDDMMYYYY(t.concluirAte)
-      return d && sameDay(d,weekSelectedDate)
-    })
+    if(["Diário","Concluídas","Atrasadas","Semanal"].includes(selectedTab)) return basePorAba
     if(selectedTab==="Mensal"){
       const [y,m,d] = monthSelectedISO.split("-").map(Number)
       const sel = startOfDay(new Date(y,m-1,d))
@@ -214,7 +190,7 @@ export default function Tela_Geren_Tarefas(){
       })
     }
     return basePorAba
-  },[basePorAba,selectedTab,weekSelectedDate,monthSelectedISO])
+  },[basePorAba,selectedTab,monthSelectedISO])
 
   const calendarMarks = useMemo(()=>{
     const marks = {}
@@ -234,6 +210,58 @@ export default function Tela_Geren_Tarefas(){
     }
     return marks
   },[tarefas,monthSelectedISO])
+
+  const groupedData = useMemo(()=>{
+    const groupTabs = ["Semanal","Concluídas","Atrasadas"]
+    if(!groupTabs.includes(selectedTab)){
+      return tarefasFiltradas.map(task=>({type:"task",task}))
+    }
+    const groups = {}
+    tarefasFiltradas.forEach(task=>{
+      const d = parseDDMMYYYY(task.concluirAte)
+      if(!d) return
+      const key = formatISO(d)
+      if(!groups[key]) groups[key] = {date:d,tasks:[]}
+      groups[key].tasks.push(task)
+    })
+    const meses = ["jan.","fev.","mar.","abr.","mai.","jun.","jul.","ago.","set.","out.","nov.","dez."]
+    const sortedKeys = Object.keys(groups).sort((a,b)=>groups[a].date.getTime()-groups[b].date.getTime())
+    const list = []
+    const hoje = today()
+    sortedKeys.forEach(key=>{
+      const d = groups[key].date
+      const dia = d.getDate()
+      const mes = meses[d.getMonth()]
+      const ano = d.getFullYear()
+      const weekday = d.toLocaleDateString("pt-BR",{weekday:"long"})
+      if(selectedTab==="Semanal"){
+        const isHoje = sameDay(d,hoje)
+        const baseLabel = `${dia} de ${mes} ${weekday}`
+        const labelMain = isHoje ? `${baseLabel} Hoje` : baseLabel
+        list.push({
+          type:"header",
+          id:`header-${key}`,
+          mode:"semana",
+          labelMain,
+          labelYear:null
+        })
+      }else{
+        const labelMain = `${dia} de ${mes}`
+        const labelYear = `${ano}`
+        list.push({
+          type:"header",
+          id:`header-${key}`,
+          mode:"historico",
+          labelMain,
+          labelYear
+        })
+      }
+      groups[key].tasks.forEach(task=>{
+        list.push({type:"task",task})
+      })
+    })
+    return list
+  },[tarefasFiltradas,selectedTab])
 
   const CardTarefa = ({item})=>(
     <TouchableOpacity
@@ -284,7 +312,6 @@ export default function Tela_Geren_Tarefas(){
 
   return (
     <View style={[styles.container,{backgroundColor:colors.background}]}>
-
       <View style={styles.header}>
         <TouchableOpacity onPress={()=>navigation.goBack()}>
           <Image
@@ -324,35 +351,6 @@ export default function Tela_Geren_Tarefas(){
         </ScrollView>
       </View>
 
-      {selectedTab==="Semanal" && (
-        <View style={styles.weekRow}>
-          {weekDays.map((d,i)=>{
-            const isSelected = sameDay(d,weekSelectedDate)
-            const weekday = d.toLocaleDateString("pt-BR",{weekday:"short"}).replace(".","")
-            return (
-              <TouchableOpacity key={i} style={styles.dayWrapper} onPress={()=>setWeekSelectedDate(d)} activeOpacity={0.9}>
-                <Text style={[styles.dayLabel,{color:colors.textMuted}]}>{weekday}</Text>
-
-                <View style={[
-                  styles.dayBox,
-                  {backgroundColor:colors.card,borderColor:colors.border},
-                  isSelected && {backgroundColor:"#ff005c",borderColor:"#ff005c"}
-                ]}>
-                  <Text style={[
-                    styles.dayText,
-                    {color: isSelected ? "#fff" : colors.textPrimary}
-                  ]}>
-                    {`${d.getDate()}`.padStart(2,"0")}
-                  </Text>
-                </View>
-
-                {isSelected && <View style={styles.selectedLine}/>}
-              </TouchableOpacity>
-            )
-          })}
-        </View>
-      )}
-
       {selectedTab==="Mensal" && (
         <View style={[
           styles.calendarCard,
@@ -381,9 +379,32 @@ export default function Tela_Geren_Tarefas(){
       )}
 
       <FlatList
-        data={tarefasFiltradas}
-        keyExtractor={(i)=>i.id}
-        renderItem={({item})=><CardTarefa item={item}/>}
+        data={groupedData}
+        keyExtractor={(item)=> item.type==="header" ? item.id : item.task.id}
+        renderItem={({item})=>{
+          if(item.type==="header"){
+            if(item.mode==="historico"){
+              return (
+                <View style={styles.sectionHeader}>
+                  <Text style={[styles.sectionHeaderText,{color:colors.textPrimary}]}>
+                    {item.labelMain}
+                    {!!item.labelYear && (
+                      <Text style={{color:colors.textMuted}}> {item.labelYear}</Text>
+                    )}
+                  </Text>
+                </View>
+              )
+            }
+            return (
+              <View style={styles.sectionHeader}>
+                <Text style={[styles.sectionHeaderText,{color:colors.textPrimary}]}>
+                  {item.labelMain}
+                </Text>
+              </View>
+            )
+          }
+          return <CardTarefa item={item.task}/>
+        }}
         ListEmptyComponent={
           <View style={[
             styles.emptyBox,
@@ -560,32 +581,23 @@ export default function Tela_Geren_Tarefas(){
                 <TouchableOpacity
                   style={[
                     styles.detailButton,
-                    {backgroundColor:"#ff005c"},
-                    loadingConcluir && {opacity:0.5}
+                    {backgroundColor:"#ff005c"}
                   ]}
-                  disabled={loadingConcluir}
-                  onPress={async()=>{
-                    if(loadingConcluir) return
-                    setLoadingConcluir(true)
-                    await concluirTarefa(selectedTask.id)
-                    setLoadingConcluir(false)
-                    setDetailVisible(false)
+                  onPress={()=>{
+                    setConfirmVisible(true)
                   }}
                 >
                   <Text style={styles.detailButtonTextPrimary}>
-                    {loadingConcluir ? "Concluindo..." : "Concluir"}
+                    Concluir
                   </Text>
                 </TouchableOpacity>
 
                 <TouchableOpacity
                   style={[
                     styles.detailButton,
-                    {backgroundColor:colors.input},
-                    loadingApagar && {opacity:0.5}
+                    {backgroundColor:colors.input}
                   ]}
-                  disabled={loadingApagar}
-                  onPress={async()=>{
-                    setLoadingApagar(true)
+                  onPress={()=>{
                     setDeleteVisible(true)
                   }}
                 >
@@ -593,7 +605,7 @@ export default function Tela_Geren_Tarefas(){
                     styles.detailButtonTextSecondary,
                     {color:colors.textPrimary}
                   ]}>
-                    {loadingApagar ? "Apagando..." : "Apagar"}
+                    Apagar
                   </Text>
                 </TouchableOpacity>
               </>
@@ -612,7 +624,10 @@ export default function Tela_Geren_Tarefas(){
       {confirmVisible && (
         <View style={styles.confirmOverlay}>
           <BlurView intensity={30} tint="dark" style={styles.confirmBlur}/>
-          <TouchableWithoutFeedback onPress={()=>setConfirmVisible(false)}>
+          <TouchableWithoutFeedback onPress={()=>{
+            if(loadingConcluir) return
+            setConfirmVisible(false)
+          }}>
             <View style={RNStyleSheet.absoluteFill}/>
           </TouchableWithoutFeedback>
 
@@ -635,6 +650,7 @@ export default function Tela_Geren_Tarefas(){
               ]}
               disabled={loadingConcluir}
               onPress={async()=>{
+                if(loadingConcluir) return
                 setLoadingConcluir(true)
                 if(selectedTask) await concluirTarefa(selectedTask.id)
                 setLoadingConcluir(false)
@@ -652,7 +668,10 @@ export default function Tela_Geren_Tarefas(){
                 styles.confirmButton,
                 {backgroundColor:colors.input}
               ]}
-              onPress={()=>setConfirmVisible(false)}
+              onPress={()=>{
+                if(loadingConcluir) return
+                setConfirmVisible(false)
+              }}
             >
               <Text style={[
                 styles.confirmButtonTextSecondary,
@@ -669,7 +688,10 @@ export default function Tela_Geren_Tarefas(){
       {deleteVisible && (
         <View style={styles.confirmOverlay}>
           <BlurView intensity={30} tint="dark" style={styles.confirmBlur}/>
-          <TouchableWithoutFeedback onPress={()=>setDeleteVisible(false)}>
+          <TouchableWithoutFeedback onPress={()=>{
+            if(loadingApagar) return
+            setDeleteVisible(false)
+          }}>
             <View style={RNStyleSheet.absoluteFill}/>
           </TouchableWithoutFeedback>
 
@@ -692,6 +714,8 @@ export default function Tela_Geren_Tarefas(){
               ]}
               disabled={loadingApagar}
               onPress={async()=>{
+                if(loadingApagar) return
+                setLoadingApagar(true)
                 if(selectedTask) await excluirTarefa(selectedTask.id)
                 setLoadingApagar(false)
                 setDeleteVisible(false)
@@ -709,7 +733,7 @@ export default function Tela_Geren_Tarefas(){
                 {backgroundColor:colors.input}
               ]}
               onPress={()=>{
-                setLoadingApagar(false)
+                if(loadingApagar) return
                 setDeleteVisible(false)
               }}
             >
@@ -786,48 +810,6 @@ const styles = StyleSheet.create({
     textAlign: "center"
   },
 
-  weekRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    marginHorizontal: 12,
-    marginTop: 6,
-    marginBottom: 4
-  },
-
-  dayWrapper: {
-    alignItems: "center",
-    flex: 1
-  },
-
-  dayLabel: {
-    fontSize: 11,
-    fontFamily: "Poppins_400Regular",
-    marginBottom: 4,
-    textTransform: "capitalize"
-  },
-
-  dayBox: {
-    width: 46,
-    height: 46,
-    borderRadius: 12,
-    borderWidth: 1,
-    justifyContent: "center",
-    alignItems: "center"
-  },
-
-  dayText: {
-    fontSize: 15,
-    fontFamily: "Poppins_700Bold"
-  },
-
-  selectedLine: {
-    width: 28,
-    height: 3,
-    backgroundColor: "#ff005c",
-    borderRadius: 2,
-    marginTop: 4
-  },
-
   calendarCard: {
     borderRadius: 16,
     padding: 10,
@@ -892,6 +874,16 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontFamily: "Poppins_400Regular",
     marginTop: 8
+  },
+
+  sectionHeader: {
+    marginTop: 18,
+    marginHorizontal: 16
+  },
+
+  sectionHeaderText: {
+    fontSize: 15,
+    fontFamily: "Poppins_700Bold"
   },
 
   modalOverlay: {

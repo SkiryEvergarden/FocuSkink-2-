@@ -1,12 +1,11 @@
 import { Inter_400Regular } from "@expo-google-fonts/inter";
 import { Poppins_400Regular, Poppins_700Bold, useFonts } from "@expo-google-fonts/poppins";
 import { Ionicons } from "@expo/vector-icons";
-import AsyncStorage from "@react-native-async-storage/async-storage";
-import { useNavigation } from "@react-navigation/native";
+import { useIsFocused, useNavigation } from "@react-navigation/native";
 import { Video } from "expo-av";
 import { BlurView } from "expo-blur";
 import { LinearGradient } from "expo-linear-gradient";
-import { useContext, useEffect, useMemo, useState } from "react";
+import { useContext, useEffect, useMemo, useRef, useState } from "react";
 import {
   Dimensions,
   Image,
@@ -58,6 +57,7 @@ const daysDiffFromToday = (d) => {
 
 export default function TelaInicio() {
   const navigation = useNavigation();
+  const isFocused = useIsFocused();
   const [selected, setSelected] = useState("Início");
 
   const { colors, isDark } = useAppTheme();
@@ -83,43 +83,28 @@ export default function TelaInicio() {
   const [achievementDetail, setAchievementDetail] = useState(null);
   const [showHomeInfo, setShowHomeInfo] = useState(false);
 
-  const [newAchievement, setNewAchievement] = useState(null);
-  const [showCongrats, setShowCongrats] = useState(false);
-  const [initialLoadDone, setInitialLoadDone] = useState(false);
-
   const [fontsLoaded] = useFonts({
     Poppins_400Regular,
     Poppins_700Bold,
     Inter_400Regular
   });
 
-  useEffect(() => {
-    if (fontsLoaded) {
-      const t = setTimeout(() => setInitialLoadDone(true), 300);
-      return () => clearTimeout(t);
-    }
-  }, [fontsLoaded]);
+  const fireVideoRef = useRef(null);
 
   useEffect(() => {
-    async function checkAchievement() {
-      if (!initialLoadDone) return;
-      if (lastAchievementsHome.length === 0) return;
-
-      const latest = lastAchievementsHome[0];
-      if (!latest) return;
-
-      const key = "lastShownAchievementId";
-      const lastShown = await AsyncStorage.getItem(key);
-
-      if (lastShown === String(latest.id)) return;
-
-      await AsyncStorage.setItem(key, String(latest.id));
-      setNewAchievement(latest);
-      setShowCongrats(true);
+    if (!isFocused && fireVideoRef.current) {
+      fireVideoRef.current.stopAsync().catch(() => {});
     }
+  }, [isFocused]);
 
-    checkAchievement();
-  }, [lastAchievementsHome, initialLoadDone]);
+  useEffect(() => {
+    return () => {
+      if (fireVideoRef.current) {
+        fireVideoRef.current.stopAsync().catch(() => {});
+        fireVideoRef.current.unloadAsync().catch(() => {});
+      }
+    };
+  }, []);
 
   const proximasTarefas = useMemo(() => {
     const futuras = tarefas
@@ -224,7 +209,14 @@ export default function TelaInicio() {
             </View>
 
             {showFireBig && (
-              <Video source={videoSource} style={styles.fireIconBig} isLooping shouldPlay resizeMode="contain" />
+              <Video
+                ref={fireVideoRef}
+                source={videoSource}
+                style={styles.fireIconBig}
+                isLooping
+                shouldPlay={isFocused}
+                resizeMode="contain"
+              />
             )}
           </View>
 
@@ -340,7 +332,7 @@ export default function TelaInicio() {
           <View style={styles.navbar}>
             {[
               { name: "Início", icon: iconinicio, screen: "Inicio" },
-              { name: "Tarefas", icon: icontarefas, screen: "TelaTarefas" },
+              { name: "Sessão", icon: icontarefas, screen: "TelaTarefas" },
               { name: "Artigos", icon: iconartigo, screen: "TelaArtigos" },
               { name: "Definições", icon: iconconfig, screen: "TelaDefinicoes" }
             ].map((item) => (
@@ -589,32 +581,6 @@ export default function TelaInicio() {
               <Text style={[styles.confirmButtonTextSecondary, { color: colors.textPrimary }]}>
                 Não desejo apagar
               </Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-      )}
-
-      {showCongrats && newAchievement && (
-        <View style={styles.achievementOverlay}>
-          <BlurView intensity={100} tint={isDark ? "dark" : "light"} style={StyleSheet.absoluteFill} />
-
-          <View style={styles.achievementModalBox}>
-            <Text style={styles.achievementModalTitle}>Parabéns!</Text>
-
-            <Image source={newAchievement.image} style={styles.achievementModalImage} />
-
-            <Text style={styles.achievementModalName}>{newAchievement.title}</Text>
-
-            <Text style={styles.achievementModalDesc}>{newAchievement.description}</Text>
-
-            <TouchableOpacity
-              style={styles.achievementModalButton}
-              onPress={() => {
-                setShowCongrats(false);
-                setNewAchievement(null);
-              }}
-            >
-              <Text style={styles.achievementModalButtonText}>Fechar</Text>
             </TouchableOpacity>
           </View>
         </View>

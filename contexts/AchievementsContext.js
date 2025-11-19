@@ -1,12 +1,12 @@
-import React, {
-  createContext,
-  useContext,
-  useState,
-  useMemo,
-  useCallback,
-  useEffect,
-} from "react";
 import { doc, onSnapshot, setDoc } from "firebase/firestore";
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useState,
+} from "react";
 import { db } from "../firebaseConfig";
 import { useAuth } from "./AuthContext";
 
@@ -83,8 +83,6 @@ const initialUserState = {
   tasksCompletedTotal: 0,
   highestStreak: 0,
   unlockedIds: [],
-  lastUnlockedAchievement: null,
-  modalVisible: false,
 };
 
 function computeUnlockedAfter(prevUnlockedIds, type, value) {
@@ -124,8 +122,8 @@ export function AchievementsProvider({ children }) {
       if (snap.exists()) {
         const data = snap.data();
         setUserState({
-          ...initialUserState,
-          ...data,
+          tasksCompletedTotal: data.tasksCompletedTotal || 0,
+          highestStreak: data.highestStreak || 0,
           unlockedIds: Array.isArray(data.unlockedIds)
             ? data.unlockedIds
             : [],
@@ -145,8 +143,6 @@ export function AchievementsProvider({ children }) {
     tasksCompletedTotal,
     highestStreak,
     unlockedIds,
-    lastUnlockedAchievement,
-    modalVisible,
   } = userState;
 
   const unlockedAchievements = useMemo(
@@ -180,19 +176,16 @@ export function AchievementsProvider({ children }) {
       const prevState = prev || initialUserState;
       const nextTasks = prevState.tasksCompletedTotal + 1;
 
-      const { unlockedIds, newlyUnlocked } = computeUnlockedAfter(
+      const { unlockedIds } = computeUnlockedAfter(
         prevState.unlockedIds,
         "tasks",
         nextTasks
       );
 
       const nextState = {
-        ...prevState,
         tasksCompletedTotal: nextTasks,
+        highestStreak: prevState.highestStreak,
         unlockedIds,
-        lastUnlockedAchievement:
-          newlyUnlocked || prevState.lastUnlockedAchievement,
-        modalVisible: newlyUnlocked ? true : prevState.modalVisible,
       };
 
       saveUserState(nextState);
@@ -211,19 +204,16 @@ export function AchievementsProvider({ children }) {
             ? currentStreak
             : prevState.highestStreak;
 
-        const { unlockedIds, newlyUnlocked } = computeUnlockedAfter(
+        const { unlockedIds } = computeUnlockedAfter(
           prevState.unlockedIds,
           "streak",
           nextHighest
         );
 
         const nextState = {
-          ...prevState,
+          tasksCompletedTotal: prevState.tasksCompletedTotal,
           highestStreak: nextHighest,
           unlockedIds,
-          lastUnlockedAchievement:
-            newlyUnlocked || prevState.lastUnlockedAchievement,
-          modalVisible: newlyUnlocked ? true : prevState.modalVisible,
         };
 
         saveUserState(nextState);
@@ -233,23 +223,11 @@ export function AchievementsProvider({ children }) {
     [saveUserState]
   );
 
-  const closeModal = useCallback(() => {
-    setUserState((prev) => {
-      const prevState = prev || initialUserState;
-      const nextState = { ...prevState, modalVisible: false };
-      saveUserState(nextState);
-      return nextState;
-    });
-  }, [saveUserState]);
-
   const value = {
     tasksCompletedTotal,
     highestStreak,
     unlockedAchievements,
     lastAchievementsHome,
-    lastUnlockedAchievement,
-    modalVisible,
-    closeModal,
     registerTaskCompleted,
     registerStreakProgress,
   };
@@ -272,3 +250,4 @@ export function useAchievements() {
 }
 
 export { ACHIEVEMENTS };
+

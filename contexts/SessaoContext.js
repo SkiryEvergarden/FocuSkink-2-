@@ -1,24 +1,24 @@
-import React, {
+import {
+  addDoc,
+  collection,
+  doc,
+  onSnapshot,
+  orderBy,
+  query,
+  setDoc,
+} from "firebase/firestore";
+import {
   createContext,
+  useCallback,
   useContext,
   useEffect,
+  useMemo,
   useRef,
   useState,
-  useCallback,
-  useMemo,
 } from "react";
-import {
-  doc,
-  setDoc,
-  onSnapshot,
-  collection,
-  addDoc,
-  query,
-  orderBy,
-} from "firebase/firestore";
 import { db } from "../firebaseConfig";
-import { useRelatorio } from "./RelatorioContext";
 import { useAuth } from "./AuthContext";
+import { useRelatorio } from "./RelatorioContext";
 
 const initialSessaoState = {
   isRunning: false,
@@ -36,6 +36,22 @@ const initialSessaoState = {
   duracaoAtivaSec: 0,
 };
 
+function computeEndedSession(prev) {
+  if (prev.tarefaSelecionada) {
+    return {
+      ...prev,
+      isRunning: false,
+      paused: false,
+      remainingSec: 0,
+      metodo: null,
+      finishedPendingReview: true,
+    };
+  }
+  return {
+    ...initialSessaoState,
+  };
+}
+
 const SessaoContext = createContext(null);
 
 export function SessaoProvider({ children }) {
@@ -46,6 +62,9 @@ export function SessaoProvider({ children }) {
   const [historicoSessoes, setHistoricoSessoes] = useState([]);
 
   const { registrarSessaoConcluida } = useRelatorio();
+
+  const prevSessaoRef = useRef(initialSessaoState);
+  const intervalRef = useRef(null);
 
   useEffect(() => {
     if (!userId) {
@@ -110,35 +129,35 @@ export function SessaoProvider({ children }) {
 
   const makeId = useCallback(() => Math.random().toString(36).slice(2), []);
 
-  const appendHistorico = useCallback(
-    (prev) => {
-      const fim = new Date();
-      const inicio = prev.startedAtISO ? new Date(prev.startedAtISO) : fim;
-
-      const base = {
-        id: prev.id || makeId(),
-        nomeSessao: prev.nomeSessao || "",
-        metodo: prev.metodo,
-        musicaAtiva: !!prev.musicaAtiva,
-        focoAtivo: !!prev.focoAtivo,
-        tarefaInclusa: !!prev.tarefaSelecionada,
-        tipoSessao:
-          prev.metodo === "pomodoro"
-            ? "Pomodoro"
-            : prev.metodo === "deepwork"
-            ? "Deepwork"
-            : "Sessão",
-        inicioEm: prev.startedAtISO || inicio.toISOString(),
-        fimEm: fim.toISOString(),
-        tempoAtivoSec: Number(prev.duracaoAtivaSec) || 0,
-        estudoMin: prev.pomodoro?.estudoMin ?? null,
-        descansoMin: prev.pomodoro?.descansoMin ?? null,
-        ciclosTotais: prev.pomodoro?.totalCiclos ?? null,
-        horas: prev.deepwork?.horas ?? null,
-        minutos: prev.deepwork?.minutos ?? null,
-      };
-
+  useEffect(() => {
+    const prev = prevSessaoRef.current;
+    if (prev.isRunning && !sessao.isRunning && prev.startedAtISO) {
       if (userId) {
+        const fim = new Date();
+        const inicio = prev.startedAtISO ? new Date(prev.startedAtISO) : fim;
+        const base = {
+          id: prev.id || makeId(),
+          nomeSessao: prev.nomeSessao || "",
+          metodo: prev.metodo,
+          musicaAtiva: !!prev.musicaAtiva,
+          focoAtivo: !!prev.focoAtivo,
+          tarefaInclusa: !!prev.tarefaSelecionada,
+          tipoSessao:
+            prev.metodo === "pomodoro"
+              ? "Pomodoro"
+              : prev.metodo === "deepwork"
+              ? "Deepwork"
+              : "Sessão",
+          inicioEm: prev.startedAtISO || inicio.toISOString(),
+          fimEm: fim.toISOString(),
+          tempoAtivoSec: Number(prev.duracaoAtivaSec) || 0,
+          estudoMin: prev.pomodoro?.estudoMin ?? null,
+          descansoMin: prev.pomodoro?.descansoMin ?? null,
+          ciclosTotais: prev.pomodoro?.totalCiclos ?? null,
+          horas: prev.deepwork?.horas ?? null,
+          minutos: prev.deepwork?.minutos ?? null,
+        };
+
         const historicoRef = collection(
           db,
           "users",
@@ -148,32 +167,17 @@ export function SessaoProvider({ children }) {
         addDoc(historicoRef, base).catch((e) =>
           console.log("Erro ao salvar histórico de sessão:", e)
         );
+
+        const sessaoRef = doc(db, "users", userId, "state", "sessao");
+        setDoc(sessaoRef, sessao).catch((e) =>
+          console.log("Erro ao salvar sessão finalizada:", e)
+        );
       }
 
       registrarSessaoConcluida?.();
-    },
-    [makeId, registrarSessaoConcluida, userId]
-  );
-
-  const endCurrentSession = useCallback(
-    (prev) => {
-      appendHistorico(prev);
-
-      if (prev.tarefaSelecionada) {
-        return {
-          ...prev,
-          isRunning: false,
-          paused: false,
-          remainingSec: 0,
-          metodo: null,
-          finishedPendingReview: true,
-        };
-      }
-
-      return { ...initialSessaoState };
-    },
-    [appendHistorico]
-  );
+    }
+    prevSessaoRef.current = sessao;
+  }, [sessao, userId, registrarSessaoConcluida, makeId]);
 
   const startDeepworkSession = useCallback(
     ({
@@ -265,14 +269,15 @@ export function SessaoProvider({ children }) {
   }, [setSessaoForUser]);
 
   const finalizeSessionManual = useCallback(() => {
-    setSessaoForUser((prev) => endCurrentSession(prev));
-  }, [endCurrentSession, setSessaoForUser]);
+    setSessaoForUser((prev) => {
+      if (!prev.isRunning) return prev;
+      return computeEndedSession(prev);
+    });
+  }, [setSessaoForUser]);
 
   const finishReviewAndReset = useCallback(() => {
     resetSessaoForUser();
   }, [resetSessaoForUser]);
-
-  const intervalRef = useRef(null);
 
   useEffect(() => {
     if (sessao.isRunning && !sessao.paused) {
@@ -283,28 +288,68 @@ export function SessaoProvider({ children }) {
           const nextRemain = prev.remainingSec - 1;
           const nextActive = (Number(prev.duracaoAtivaSec) || 0) + 1;
 
-          if (nextRemain > 0) {
-            return {
+          if (prev.metodo === "pomodoro" && prev.pomodoro) {
+            if (nextRemain > 0) {
+              return {
+                ...prev,
+                remainingSec: nextRemain,
+                duracaoAtivaSec: nextActive,
+              };
+            }
+
+            const {
+              estudoMin,
+              descansoMin,
+              cyclesRemaining,
+              emDescanso,
+            } = prev.pomodoro;
+
+            if (!emDescanso) {
+              const descansoSecs = (Number(descansoMin) || 1) * 60;
+              return {
+                ...prev,
+                remainingSec: descansoSecs,
+                duracaoAtivaSec: nextActive,
+                pomodoro: {
+                  ...prev.pomodoro,
+                  emDescanso: true,
+                },
+              };
+            } else {
+              const newCycles = (Number(cyclesRemaining) || 1) - 1;
+              if (newCycles > 0) {
+                const estudoSecs = (Number(estudoMin) || 1) * 60;
+                return {
+                  ...prev,
+                  remainingSec: estudoSecs,
+                  duracaoAtivaSec: nextActive,
+                  pomodoro: {
+                    ...prev.pomodoro,
+                    emDescanso: false,
+                    cyclesRemaining: newCycles,
+                  },
+                };
+              }
+              return computeEndedSession({
+                ...prev,
+                remainingSec: 0,
+                duracaoAtivaSec: nextActive,
+              });
+            }
+          } else {
+            if (nextRemain > 0) {
+              return {
+                ...prev,
+                remainingSec: nextRemain,
+                duracaoAtivaSec: nextActive,
+              };
+            }
+            return computeEndedSession({
               ...prev,
-              remainingSec: nextRemain,
+              remainingSec: 0,
               duracaoAtivaSec: nextActive,
-            };
+            });
           }
-
-          const ended = endCurrentSession({
-            ...prev,
-            remainingSec: 0,
-            duracaoAtivaSec: nextActive,
-          });
-
-          if (userId) {
-            const sessaoRef = doc(db, "users", userId, "state", "sessao");
-            setDoc(sessaoRef, ended).catch((e) =>
-              console.log("Erro ao salvar sessão finalizada:", e)
-            );
-          }
-
-          return ended;
         });
       }, 1000);
     }
@@ -312,7 +357,7 @@ export function SessaoProvider({ children }) {
     return () => {
       if (intervalRef.current) clearInterval(intervalRef.current);
     };
-  }, [sessao.isRunning, sessao.paused, endCurrentSession, userId]);
+  }, [sessao.isRunning, sessao.paused]);
 
   const value = useMemo(
     () => ({

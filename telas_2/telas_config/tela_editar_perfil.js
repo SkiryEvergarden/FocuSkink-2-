@@ -87,21 +87,19 @@ export default function TelaEditarPerfil() {
   }
 
   const handlePickImage = async () => {
-    const { status } =
-      await ImagePicker.requestMediaLibraryPermissionsAsync();
+    try {
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images, // ainda funciona, só gera WARNING
+        quality: 0.8,
+      });
 
-    if (status !== "granted") {
-      alert("Permissão para acessar a galeria foi negada.");
-      return;
-    }
+      if (result.canceled) {
+        return;
+      }
 
-    const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.Images,
-      quality: 0.8,
-    });
+      const uri = result.assets?.[0]?.uri;
+      if (!uri) return;
 
-    if (!result.canceled && result.assets[0]?.uri) {
-      const uri = result.assets[0].uri;
       setAvatarUri(uri);
 
       try {
@@ -109,6 +107,8 @@ export default function TelaEditarPerfil() {
       } catch (e) {
         console.log("Erro ao atualizar avatar:", e);
       }
+    } catch (e) {
+      console.log("Erro ao abrir seletor de imagem:", e);
     }
   };
 
@@ -141,7 +141,6 @@ export default function TelaEditarPerfil() {
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
         >
-          {/* HEADER */}
           <View style={styles.header}>
             <TouchableOpacity
               onPress={() => navigation.goBack()}
@@ -155,7 +154,6 @@ export default function TelaEditarPerfil() {
             <Text style={styles.headerTitle}>Perfil</Text>
           </View>
 
-          {/* AVATAR */}
           <View style={styles.avatarWrap}>
             {avatarUri ? (
               <Image source={{ uri: avatarUri }} style={styles.avatarBig} />
@@ -163,7 +161,6 @@ export default function TelaEditarPerfil() {
               <View style={styles.avatarBig} />
             )}
 
-            {/* AQUI: icone sem tintColor exatamente como seu código original */}
             <TouchableOpacity
               style={styles.avatarEditPin}
               onPress={handlePickImage}
@@ -175,7 +172,6 @@ export default function TelaEditarPerfil() {
             </TouchableOpacity>
           </View>
 
-          {/* NOME */}
           <View style={styles.nameRow}>
             {editingName ? (
               <View style={styles.editNameBox}>
@@ -198,7 +194,6 @@ export default function TelaEditarPerfil() {
               <>
                 <Text style={styles.username}>{username}</Text>
 
-                {/* AQUI TAMBÉM: mesmo ícone, sem tintColor */}
                 <TouchableOpacity
                   style={styles.editNameIconBtn}
                   onPress={() => setEditingName(true)}
@@ -212,13 +207,11 @@ export default function TelaEditarPerfil() {
             )}
           </View>
 
-          {/* DESDE */}
           <View style={styles.sinceChip}>
             <Text style={styles.sinceChipText}>Usuário desde</Text>
             <Text style={styles.sinceYear}>2025</Text>
           </View>
 
-          {/* CARD ESTATÍSTICAS */}
           <View style={styles.statsCard}>
             <View style={styles.statSide}>
               <View style={styles.whiteSquare} />
@@ -239,7 +232,6 @@ export default function TelaEditarPerfil() {
             </View>
           </View>
 
-          {/* CONQUISTAS */}
           <Text style={styles.sectionTitle}>Conquistas</Text>
 
           <View style={styles.achievementsRow}>
@@ -282,7 +274,6 @@ export default function TelaEditarPerfil() {
         </ScrollView>
       </KeyboardAvoidingView>
 
-      {/* MODAL */}
       {achievementDetail && (
         <View style={styles.achievementOverlay}>
           <BlurView

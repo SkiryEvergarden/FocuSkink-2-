@@ -170,7 +170,6 @@ export default function TelaArtigos() {
         contentContainerStyle={{ paddingBottom: 260 }}
         showsVerticalScrollIndicator={false}
       >
-        {/* SEARCH BAR + FAVORITES */}
         <View style={styles.searchBarWrapper}>
           <View style={styles.searchBar}>
             <Image source={iconsearch} style={styles.searchIcon} />
@@ -191,7 +190,6 @@ export default function TelaArtigos() {
           </TouchableOpacity>
         </View>
 
-        {/* ARTIGO RECOMENDADO */}
         {showRecommended && (
           <>
             <Text style={styles.sectionTitle}>Artigo recomendado</Text>
@@ -219,7 +217,6 @@ export default function TelaArtigos() {
           </>
         )}
 
-        {/* SEÇÕES DE ARTIGOS */}
         {filteredSections.map((sec) => (
           <View key={sec.titulo} style={{ marginTop: 8 }}>
             <Text style={styles.sectionTitle}>
@@ -251,7 +248,6 @@ export default function TelaArtigos() {
           </View>
         ))}
 
-        {/* SEM RESULTADOS */}
         {noResults && (
           <View style={styles.noResultBox}>
             <Text style={styles.noResultTitle}>Nenhum artigo encontrado</Text>
@@ -262,7 +258,6 @@ export default function TelaArtigos() {
         )}
       </ScrollView>
 
-      {/* NAVBAR + GRADIENT, MESMO PADRÃO DA TELAINICIO */}
       <LinearGradient
         colors={
           isDark
@@ -286,7 +281,7 @@ export default function TelaArtigos() {
           <View style={styles.navbar}>
             {[
               { name: "Início", icon: iconinicio, screen: "Inicio" },
-              { name: "Tarefas", icon: icontarefas, screen: "TelaTarefas" },
+              { name: "Sessão", icon: icontarefas, screen: "TelaTarefas" },
               { name: "Artigos", icon: iconartigo, screen: "TelaArtigos" },
               {
                 name: "Definições",
@@ -439,7 +434,6 @@ export default function TelaArtigos() {
         )}
       </Modal>
 
-      {/* READER / LEITOR */}
       <Modal
         transparent={false}
         visible={readerOpen && !!currentArticle}
@@ -525,7 +519,7 @@ export default function TelaArtigos() {
               )}
             </View>
 
-            {/* SETTINGS / AJUSTE DE FONTE */}
+        
             {settingsOpen && (
               <View style={styles.settingsOverlay}>
                 <View style={styles.settingsCard}>
