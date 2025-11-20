@@ -1,11 +1,25 @@
-# Sample Snack app
+# FocuSkink
+<img width="551" height="511" alt="image" src="https://github.com/user-attachments/assets/4bd122cf-c044-47c4-a955-3771339e8b18" />
 
-Open the `App.js` file to start writing some code. You can preview the changes directly on your phone or tablet by scanning the **QR code** or use the iOS or Android emulators. When you're done, click **Save** and share the link!
 
-When you're ready to see everything that Expo provides (or if you want to use your own editor) you can **Download** your project and use it with [expo cli](https://docs.expo.dev/get-started/installation/#expo-cli)).
 
-All projects created in Snack are publicly available, so you can easily share the link to this project via link, or embed it on a web page with the `<>` button.
 
-If you're having problems, you can tweet to us [@expo](https://twitter.com/expo) or ask in our [forums](https://forums.expo.dev/c/expo-dev-tools/61) or [Discord](https://chat.expo.dev/).
+## O que é o FocuSkink?
+Focuskink é um aplicativo desenvolvido para aprimorar o foco, organizar tarefas e potencializar o aprendizado por meio de métodos de estudo eficientes. Além de gerenciar rotinas, o app reúne artigos científicos resumidos, permitindo que o usuário tenha acesso rápido a conteúdos confiáveis e relevantes. Combinando tecnologia, produtividade e bem-estar digital, o Focuskink ajuda a reduzir distrações, melhorar a disciplina e criar ambientes mais propícios ao estudo e ao trabalho.
 
-Snack is Open Source. You can find the code on the [GitHub repo](https://github.com/expo/snack).
+
+
+<img width="1253" height="701" alt="image" src="https://github.com/user-attachments/assets/e262b2ee-fc9b-41b5-9834-b3c446abc6d0" />
+
+
+
+## Objetivos
+1. Uso de recursos como bloqueio de notificações, controle de uso de apps e muito mais, para garantir ao que o usuário não se distraia ao usar o app.
+2. Implementação de técnicas como Deepwork e Pomodoro e lembretes personalizados, para que o usuário não deixe nenhuma tarefa de lado.
+3. Uma interface adaptável e acessível para todos, assim criando um ambiente digital mais equilibrado e ajudando o usuário a ficar imerso na proposta do app.
+4. Geração de métricas e relatórios personalizados para que o usuário possa acompanhar sua evolução e poder montar a melhor rotina possível.
+
+
+<img width="596" height="723" alt="image" src="https://github.com/user-attachments/assets/8dbda2ae-d9e6-443f-b637-47c9c91f8355" />
+
+**Grupo:** Alvaro Pires, Francisco de Assis, João Henrique, Kaique Malaquias
