@@ -490,11 +490,11 @@ export default function TelaTarefas() {
 
   const [showFocusStartModal, setShowFocusStartModal] = useState(false);
   const [showFocusEndModal, setShowFocusEndModal] = useState(false);
-  const [pendingFocusReminder, setPendingFocusReminder] = useState(false);
   const prevSessaoRef = useRef(sessao);
 
   const alarmSoundRef = useRef(null);
   const [alarmLoaded, setAlarmLoaded] = useState(false);
+  const lastAlarmSecondRef = useRef(null);
 
   useEffect(() => {
     const unsubscribe = navigation.addListener("focus", () => {
@@ -549,15 +549,23 @@ export default function TelaTarefas() {
   }, []);
 
   useEffect(() => {
-    if (
-      !sessao.isRunning ||
-      sessao.paused ||
-      sessao.remainingSec !== 10 ||
-      !alarmLoaded ||
-      !alarmSoundRef.current
-    ) {
+    if (!alarmLoaded || !alarmSoundRef.current) return;
+
+    if (!sessao.isRunning || sessao.paused) {
+      lastAlarmSecondRef.current = null;
       return;
     }
+
+    const sec = sessao.remainingSec;
+
+    if (sec > 10 || sec <= 0) {
+      if (sec > 10) lastAlarmSecondRef.current = null;
+      return;
+    }
+
+    if (lastAlarmSecondRef.current === sec) return;
+    lastAlarmSecondRef.current = sec;
+
     (async () => {
       try {
         await alarmSoundRef.current.setPositionAsync(0);
@@ -576,11 +584,7 @@ export default function TelaTarefas() {
     }
 
     if (prev.isRunning && !sessao.isRunning && prev.focoAtivo) {
-      if (prev.tarefaSelecionada) {
-        setPendingFocusReminder(true);
-      } else {
-        setShowFocusEndModal(true);
-      }
+      setShowFocusEndModal(true);
     }
 
     prevSessaoRef.current = sessao;
@@ -830,11 +834,6 @@ export default function TelaTarefas() {
   );
 
   function confirmarTerminouTarefa() {
-    const shouldShowFocusReminder = pendingFocusReminder;
-    if (shouldShowFocusReminder) {
-      setShowFocusEndModal(true);
-      setPendingFocusReminder(false);
-    }
     if (sessao.tarefaSelecionada && concluirTarefa) {
       concluirTarefa(sessao.tarefaSelecionada.id);
     }
@@ -844,11 +843,6 @@ export default function TelaTarefas() {
     });
   }
   function naoTerminouTarefa() {
-    const shouldShowFocusReminder = pendingFocusReminder;
-    if (shouldShowFocusReminder) {
-      setShowFocusEndModal(true);
-      setPendingFocusReminder(false);
-    }
     if (sessaoCtx.finishReviewAndReset) sessaoCtx.finishReviewAndReset();
     InteractionManager.runAfterInteractions(() => {
       resetCampos();
@@ -1404,13 +1398,13 @@ export default function TelaTarefas() {
                       colors={colors}
                     />
                   )}
-                  ListEmptyComponent={(
+                  ListEmptyComponent={
                     <View style={styles.emptyBox}>
                       <Text style={styles.emptyText}>
                         Nenhuma tarefa para este dia.
                       </Text>
                     </View>
-                  )}
+                  }
                   contentContainerStyle={{
                     paddingHorizontal: 16,
                     paddingBottom: 110,
