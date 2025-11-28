@@ -1,12 +1,12 @@
-import React, {
+import { collection, doc, getDocs, onSnapshot, setDoc } from "firebase/firestore";
+import {
   createContext,
+  useCallback,
   useContext,
   useEffect,
-  useState,
-  useCallback,
   useMemo,
+  useState,
 } from "react";
-import { doc, onSnapshot, setDoc } from "firebase/firestore";
 import { db } from "../firebaseConfig";
 import { useAuth } from "./AuthContext";
 
@@ -69,7 +69,6 @@ const MONTH_LABELS = [
 const formatIntervaloSemana = (weekStart) => {
   const end = new Date(weekStart);
   end.setDate(end.getDate() + 6);
-
   const dd = (d) => String(d.getDate()).padStart(2, "0");
   return `${dd(weekStart)} de ${MONTH_LABELS[weekStart.getMonth()]} até ${dd(
     end
@@ -91,6 +90,8 @@ export function RelatorioProvider({ children }) {
   const userId = currentUser?.id || null;
 
   const [week, setWeek] = useState(null);
+  const [relatoriosSalvos, setRelatoriosSalvos] = useState([]);
+  const [comparacao, setComparacao] = useState(null);
 
   useEffect(() => {
     if (!userId) {
@@ -99,31 +100,49 @@ export function RelatorioProvider({ children }) {
       return;
     }
 
-    const relatorioRef = doc(db, "users", userId, "state", "relatorioSemana");
+    const ref = doc(db, "users", userId, "state", "relatorioSemana");
 
-    const unsub = onSnapshot(relatorioRef, (snap) => {
+    const unsub = onSnapshot(ref, (snap) => {
       if (snap.exists()) {
         const data = snap.data();
         if (!data.weekStartISO || !Array.isArray(data.days)) {
           const wk = emptyWeek(startOfWeekSunday(new Date()));
           setWeek(wk);
-          setDoc(relatorioRef, wk).catch((e) =>
-            console.log("Erro ao corrigir relatório:", e)
-          );
+          setDoc(ref, wk);
         } else {
           setWeek(data);
         }
       } else {
         const wk = emptyWeek(startOfWeekSunday(new Date()));
         setWeek(wk);
-        setDoc(relatorioRef, wk).catch((e) =>
-          console.log("Erro ao criar relatório inicial:", e)
-        );
+        setDoc(ref, wk);
       }
     });
 
     return () => unsub();
   }, [userId]);
+
+  const carregarHistorico = useCallback(async () => {
+    if (!userId) return;
+
+    const col = collection(db, "users", userId, "relatorios");
+    const snap = await getDocs(col);
+
+    const lista = [];
+    snap.forEach((doc) => {
+      lista.push(doc.data());
+    });
+
+    const ordenado = lista.sort(
+      (a, b) => new Date(a.weekStartISO) - new Date(b.weekStartISO)
+    );
+
+    setRelatoriosSalvos(ordenado);
+  }, [userId]);
+
+  useEffect(() => {
+    carregarHistorico();
+  }, [carregarHistorico]);
 
   const ensureWeekForToday = useCallback((prevWeek) => {
     const today = new Date();
@@ -134,6 +153,24 @@ export function RelatorioProvider({ children }) {
     }
     return prevWeek;
   }, []);
+
+  const salvarSemanaCompleta = useCallback(
+    async (wk) => {
+      if (!userId) return;
+
+      const ref = doc(
+        db,
+        "users",
+        userId,
+        "relatorios",
+        wk.weekStartISO
+      );
+
+      await setDoc(ref, wk);
+      carregarHistorico();
+    },
+    [userId, carregarHistorico]
+  );
 
   const registrarEvento = useCallback(
     (tipo) => {
@@ -149,22 +186,18 @@ export function RelatorioProvider({ children }) {
         const updated = { ...base, days: newDays };
 
         if (userId) {
-          const relatorioRef = doc(
-            db,
-            "users",
-            userId,
-            "state",
-            "relatorioSemana"
-          );
-          setDoc(relatorioRef, updated).catch((e) =>
-            console.log("Erro ao salvar relatório:", e)
-          );
+          const ref = doc(db, "users", userId, "state", "relatorioSemana");
+          setDoc(ref, updated);
+
+          setTimeout(() => {
+            salvarSemanaCompleta(updated);
+          }, 100);
         }
 
         return updated;
       });
     },
-    [ensureWeekForToday, userId]
+    [ensureWeekForToday, userId, salvarSemanaCompleta]
   );
 
   const registrarTarefaConcluida = useCallback(
@@ -181,17 +214,6 @@ export function RelatorioProvider({ children }) {
     () => registrarEvento("artigos"),
     [registrarEvento]
   );
-
-  const resetSemanaManual = useCallback(() => {
-    const wk = emptyWeek(startOfWeekSunday(new Date()));
-    setWeek(wk);
-    if (userId) {
-      const relatorioRef = doc(db, "users", userId, "state", "relatorioSemana");
-      setDoc(relatorioRef, wk).catch((e) =>
-        console.log("Erro ao resetar relatório:", e)
-      );
-    }
-  }, [userId]);
 
   const resumoSemana = useMemo(() => {
     if (!week) return null;
@@ -241,9 +263,42 @@ export function RelatorioProvider({ children }) {
     };
   }, [week]);
 
-  const relatoriosSalvos = useMemo(() => {
-    return resumoSemana ? [resumoSemana] : [];
-  }, [resumoSemana]);
+  const gerarComparacao = useCallback(
+    (isoA, isoB) => {
+      const a = relatoriosSalvos.find((r) => r.weekStartISO === isoA);
+      const b = relatoriosSalvos.find((r) => r.weekStartISO === isoB);
+      if (!a || !b) return;
+
+      const soma = (week) => {
+        return week.days.reduce(
+          (acc, d) => {
+            acc.tarefas += d.tarefas || 0;
+            acc.sessoes += d.sessoes || 0;
+            acc.artigos += d.artigos || 0;
+            return acc;
+          },
+          { tarefas: 0, sessoes: 0, artigos: 0 }
+        );
+      };
+
+      const sa = soma(a);
+      const sb = soma(b);
+
+      setComparacao({
+        semanaA: isoA,
+        semanaB: isoB,
+        diff: {
+          tarefas: sb.tarefas - sa.tarefas,
+          sessoes: sb.sessoes - sa.sessoes,
+          artigos: sb.artigos - sa.artigos,
+          total:
+            (sb.tarefas + sb.sessoes + sb.artigos) -
+            (sa.tarefas + sa.sessoes + sa.artigos),
+        },
+      });
+    },
+    [relatoriosSalvos]
+  );
 
   return (
     <RelatorioContext.Provider
@@ -251,10 +306,11 @@ export function RelatorioProvider({ children }) {
         week,
         resumoSemana,
         relatoriosSalvos,
+        comparar: comparacao,
+        gerarComparacao,
         registrarTarefaConcluida,
         registrarSessaoConcluida,
         registrarArtigoLido,
-        resetSemanaManual,
       }}
     >
       {children}

@@ -15,7 +15,7 @@ import { useAppTheme } from "../contexts/ThemeContext";
 const { width } = Dimensions.get("window");
 
 function SemanaChartCard({ semana, tituloExtra, colors }) {
-  const { isDark } = useAppTheme(); // << ADICIONADO
+  const { isDark } = useAppTheme();
   const s = styles(colors);
 
   const dias = useMemo(
@@ -69,7 +69,7 @@ function SemanaChartCard({ semana, tituloExtra, colors }) {
               <View key={d.label} style={s.chartDay}>
                 <View style={s.barsWrapper}>
 
-                  {/* ROSA PRINCIPAL */}
+                  {/* SESSÕES */}
                   <View
                     style={[
                       s.bar,
@@ -77,21 +77,26 @@ function SemanaChartCard({ semana, tituloExtra, colors }) {
                     ]}
                   />
 
-                  {/* ROSA SUAVE */}
+                  {/* TAREFAS */}
                   <View
                     style={[
                       s.bar,
-                      { height: alturaBarra(d.tarefas), backgroundColor: colors.accentSoft },
+                      {
+                        height: alturaBarra(d.tarefas),
+                        backgroundColor: colors.accentSoft,
+                      },
                     ]}
                   />
 
-                  {/* ARTIGOS – AGORA BRANCO NO TEMA ESCURO */}
+                  {/* ARTIGOS */}
                   <View
                     style={[
                       s.bar,
                       {
                         height: alturaBarra(d.artigos),
-                        backgroundColor: isDark ? colors.textPrimary : "#111827",
+                        backgroundColor: isDark
+                          ? colors.textPrimary
+                          : "#111827",
                       },
                     ]}
                   />
@@ -113,14 +118,16 @@ function SemanaChartCard({ semana, tituloExtra, colors }) {
         <View style={s.legendItem}>
           <View style={[s.legendDot, { backgroundColor: colors.accent }]} />
           <Text style={s.legendText}>
-            Você realizou {totals.sessoes || 0} sessão(ões) nessa semana.
+            Você realizou {totals.sessoes || 0} sessão(ões).
           </Text>
         </View>
 
         <View style={s.legendItem}>
-          <View style={[s.legendDot, { backgroundColor: colors.accentSoft }]} />
+          <View
+            style={[s.legendDot, { backgroundColor: colors.accentSoft }]}
+          />
           <Text style={s.legendText}>
-            Você concluiu {totals.tarefas || 0} tarefa(s) nessa semana.
+            Você concluiu {totals.tarefas || 0} tarefa(s).
           </Text>
         </View>
 
@@ -132,19 +139,13 @@ function SemanaChartCard({ semana, tituloExtra, colors }) {
             ]}
           />
           <Text style={s.legendText}>
-            Você leu {totals.artigos || 0} artigo(s) nessa semana.
+            Você leu {totals.artigos || 0} artigo(s).
           </Text>
         </View>
       </View>
-
     </View>
   );
 }
-
-const MESES = [
-  "Janeiro","Fevereiro","Março","Abril","Maio","Junho",
-  "Julho","Agosto","Setembro","Outubro","Novembro","Dezembro"
-];
 
 export default function RelatorioComparar() {
   const navigation = useNavigation();
@@ -152,24 +153,29 @@ export default function RelatorioComparar() {
   const { colors } = useAppTheme();
   const s = styles(colors);
 
-  const semanasDisponiveis = Array.isArray(historicoSemanas)
-    ? historicoSemanas
-    : [];
+  const semanasDisponiveis = useMemo(
+    () => (Array.isArray(historicoSemanas) ? historicoSemanas : []),
+    [historicoSemanas]
+  );
 
-  const [primeiroMesIndex] = useState(new Date().getMonth());
   const [semana1Id, setSemana1Id] = useState(null);
   const [semana2Id, setSemana2Id] = useState(null);
-
-  const semanasFiltradasMes = useMemo(() => {
-    return semanasDisponiveis.filter((wk) => {
-      if (!wk.weekStartISO) return true;
-      const dt = new Date(wk.weekStartISO);
-      return dt.getMonth() === primeiroMesIndex;
-    });
-  }, [semanasDisponiveis, primeiroMesIndex]);
+  const [mostrarComparacao, setMostrarComparacao] = useState(false);
 
   const semana1 = semanasDisponiveis.find((w) => w.id === semana1Id) || null;
   const semana2 = semanasDisponiveis.find((w) => w.id === semana2Id) || null;
+
+  const temDuasSemanas = semanasDisponiveis.length >= 2;
+
+  function selecionarSemana(id) {
+    if (mostrarComparacao) return;
+
+    if (semana1Id === id) return setSemana1Id(null);
+    if (semana2Id === id) return setSemana2Id(null);
+
+    if (!semana1Id) return setSemana1Id(id);
+    if (!semana2Id && id !== semana1Id) return setSemana2Id(id);
+  }
 
   const textoComparacao = useMemo(() => {
     if (!semana1 || !semana2) return "";
@@ -179,91 +185,83 @@ export default function RelatorioComparar() {
 
     const dif = (a, b) => (a || 0) - (b || 0);
 
-    const lines = [];
-
     const dt = dif(t1.tarefas, t2.tarefas);
     const ds = dif(t1.sessoes, t2.sessoes);
     const da = dif(t1.artigos, t2.artigos);
 
-    lines.push(
+    return [
       dt > 0
-        ? `Na primeira semana você realizou ${dt} tarefa(s) a mais que na segunda.`
+        ? `Na primeira semana você realizou ${dt} tarefa(s) a mais.`
         : dt < 0
-        ? `Na segunda semana você realizou ${Math.abs(dt)} tarefa(s) a mais que na primeira.`
-        : "Você realizou a mesma quantidade de tarefas nas duas semanas."
-    );
-
-    lines.push(
+        ? `Na segunda semana você realizou ${Math.abs(dt)} tarefa(s) a mais.`
+        : "Você realizou a mesma quantidade de tarefas.",
       ds > 0
-        ? `Na primeira semana você realizou ${ds} sessão(ões) a mais.`
+        ? `Na primeira semana você fez ${ds} sessão(ões) a mais.`
         : ds < 0
-        ? `Na segunda semana você realizou ${Math.abs(ds)} sessão(ões) a mais.`
-        : "Você realizou a mesma quantidade de sessões nas duas semanas."
-    );
-
-    lines.push(
+        ? `Na segunda semana você fez ${Math.abs(ds)} sessão(ões) a mais.`
+        : "Você fez a mesma quantidade de sessões.",
       da > 0
         ? `Na primeira semana você leu ${da} artigo(s) a mais.`
         : da < 0
         ? `Na segunda semana você leu ${Math.abs(da)} artigo(s) a mais.`
-        : "Você leu a mesma quantidade de artigos nas duas semanas."
-    );
-
-    return lines.join("\n");
+        : "Você leu a mesma quantidade de artigos.",
+    ].join("\n");
   }, [semana1, semana2]);
-
-  const temDuasSemanas = semanasDisponiveis.length >= 2;
 
   return (
     <View style={s.container}>
-      <ScrollView contentContainerStyle={s.scroll} showsVerticalScrollIndicator={false}>
+      <ScrollView contentContainerStyle={s.scroll}>
         
-        <View style={s.header}>
-          <TouchableOpacity onPress={() => navigation.goBack()}>
-            <Image
-              source={require("../assets_icons/arrow_icon.png")}
-              style={s.backIcon}
-            />
-          </TouchableOpacity>
-          <Text style={s.headerText}>Comparar relatórios</Text>
-        </View>
+        {/* HEADER */}
+        {!mostrarComparacao && (
+          <View style={s.header}>
+            <TouchableOpacity onPress={() => navigation.goBack()}>
+              <Image
+                source={require("../assets_icons/arrow_icon.png")}
+                style={s.backIcon}
+              />
+            </TouchableOpacity>
+            <Text style={s.headerText}>Comparar relatórios</Text>
+          </View>
+        )}
 
-        {!temDuasSemanas ? (
+        {/* SE NÃO HÁ DUAS SEMANAS */}
+        {!mostrarComparacao && !temDuasSemanas && (
           <View style={s.emptyBox}>
             <Text style={s.emptyTitle}>Ainda não há dados suficientes</Text>
             <Text style={s.emptyText}>
-              Você precisa de pelo menos duas semanas completas registradas para comparar relatórios.
+              Você precisa de pelo menos duas semanas completas para comparar.
             </Text>
           </View>
-        ) : (
+        )}
+
+        {/* LISTAGEM DE RELATÓRIOS */}
+        {!mostrarComparacao && temDuasSemanas && (
           <>
             <View style={s.monthSelectBox}>
-              <Text style={s.monthLabel}>Selecionar primeiro mês</Text>
+              <Text style={s.monthLabel}>Relatórios feitos</Text>
               <View style={s.monthFakeSelect}>
-                <Text style={s.monthValue}>{MESES[primeiroMesIndex]}</Text>
+                <Text style={s.monthValue}>Selecione duas semanas</Text>
               </View>
             </View>
 
-            {semanasFiltradasMes.map((wk, index) => {
+            {semanasDisponiveis.map((wk) => {
               const sel1 = wk.id === semana1Id;
               const sel2 = wk.id === semana2Id;
               const selected = sel1 || sel2;
 
               return (
-                <View key={wk.id || index} style={s.weekSelectCard}>
+                <View key={wk.id} style={s.weekSelectCard}>
                   <View>
-                    <Text style={s.weekSelectTitle}>Semana {wk.semanaNumero}</Text>
+                    <Text style={s.weekSelectTitle}>
+                      Semana {wk.semanaNumero}
+                    </Text>
                     <Text style={s.weekSelectSubtitle}>{wk.intervaloLabel}</Text>
                   </View>
 
                   <TouchableOpacity
                     style={[s.selectButton, selected && s.selectButtonSelected]}
-                    onPress={() => {
-                      if (!semana1Id) setSemana1Id(wk.id);
-                      else if (!semana2Id && wk.id !== semana1Id) setSemana2Id(wk.id);
-                      else if (wk.id === semana1Id) setSemana1Id(null);
-                      else if (wk.id === semana2Id) setSemana2Id(null);
-                    }}
+                    onPress={() => selecionarSemana(wk.id)}
                   >
                     <Text
                       style={[
@@ -271,27 +269,16 @@ export default function RelatorioComparar() {
                         selected && s.selectButtonTextSelected,
                       ]}
                     >
-                      {sel1 ? "1ª escolhida" : sel2 ? "2ª escolhida" : "Selecionar"}
+                      {sel1
+                        ? "1ª escolhida"
+                        : sel2
+                        ? "2ª escolhida"
+                        : "Selecionar"}
                     </Text>
                   </TouchableOpacity>
                 </View>
               );
             })}
-
-            {semana1 && semana2 && (
-              <>
-                <SemanaChartCard semana={semana1} tituloExtra="Primeira semana" colors={colors} />
-                <SemanaChartCard semana={semana2} tituloExtra="Segunda semana" colors={colors} />
-
-                <View style={s.textBlock}>
-                  {textoComparacao.split("\n").map((linha, idx) => (
-                    <Text key={idx} style={s.textParagraph}>
-                      • {linha}
-                    </Text>
-                  ))}
-                </View>
-              </>
-            )}
 
             <TouchableOpacity
               style={[
@@ -299,8 +286,36 @@ export default function RelatorioComparar() {
                 !(semana1 && semana2) && s.bottomButtonDisabled,
               ]}
               disabled={!(semana1 && semana2)}
+              onPress={() => setMostrarComparacao(true)}
             >
               <Text style={s.bottomButtonText}>Comparar relatórios</Text>
+            </TouchableOpacity>
+          </>
+        )}
+
+        {/* RESULTADO DA COMPARAÇÃO */}
+        {mostrarComparacao && (
+          <>
+            <SemanaChartCard semana={semana1} tituloExtra="Primeira semana" colors={colors} />
+            <SemanaChartCard semana={semana2} tituloExtra="Segunda semana" colors={colors} />
+
+            <View style={s.textBlock}>
+              {textoComparacao.split("\n").map((linha, idx) => (
+                <Text key={idx} style={s.textParagraph}>
+                  • {linha}
+                </Text>
+              ))}
+            </View>
+
+            <TouchableOpacity
+              style={[s.bottomButton, { marginTop: 30 }]}
+              onPress={() => {
+                setMostrarComparacao(false);
+                setSemana1Id(null);
+                setSemana2Id(null);
+              }}
+            >
+              <Text style={s.bottomButtonText}>Voltar</Text>
             </TouchableOpacity>
           </>
         )}
@@ -382,14 +397,13 @@ const styles = (colors) =>
 
     weekSelectCard: {
       flexDirection: "row",
-      alignItems: "center",
       justifyContent: "space-between",
+      alignItems: "center",
       backgroundColor: colors.card,
       borderRadius: 16,
       borderWidth: 1,
       borderColor: colors.border,
-      paddingHorizontal: 16,
-      paddingVertical: 14,
+      padding: 16,
       marginBottom: 12,
     },
     weekSelectTitle: {
@@ -402,6 +416,7 @@ const styles = (colors) =>
       color: colors.textSecondary,
       marginTop: 2,
     },
+
     selectButton: {
       paddingHorizontal: 14,
       paddingVertical: 8,
@@ -424,16 +439,14 @@ const styles = (colors) =>
       borderRadius: 16,
       borderWidth: 1,
       borderColor: colors.border,
-      paddingHorizontal: 16,
-      paddingVertical: 18,
+      padding: 18,
       marginTop: 18,
-      marginBottom: 4,
     },
     weekRow: {
       flexDirection: "row",
-      alignItems: "center",
       justifyContent: "space-between",
       marginBottom: 12,
+      alignItems: "center",
     },
     weekTitle: {
       fontSize: 18,
@@ -443,7 +456,6 @@ const styles = (colors) =>
     weekSubtitle: {
       fontSize: 13,
       color: colors.textSecondary,
-      marginTop: 4,
     },
     yearPill: {
       paddingHorizontal: 14,
@@ -458,11 +470,7 @@ const styles = (colors) =>
       color: colors.textBody,
     },
 
-    chartCard: {
-      backgroundColor: colors.card,
-      borderRadius: 16,
-      marginBottom: 14,
-    },
+    chartCard: { marginBottom: 14 },
     chartInner: {
       height: 170,
       justifyContent: "flex-end",
@@ -481,11 +489,10 @@ const styles = (colors) =>
       justifyContent: "space-between",
       alignItems: "flex-end",
       height: 130,
-      paddingHorizontal: 4,
     },
     chartDay: {
-      alignItems: "center",
       width: 40,
+      alignItems: "center",
     },
     barsWrapper: {
       flexDirection: "row",
@@ -506,10 +513,10 @@ const styles = (colors) =>
 
     totalCardSmall: {
       backgroundColor: colors.card,
+      paddingVertical: 12,
       borderRadius: 12,
       borderWidth: 1,
       borderColor: colors.border,
-      paddingVertical: 12,
       alignItems: "center",
       marginBottom: 10,
     },
@@ -528,8 +535,7 @@ const styles = (colors) =>
       borderRadius: 12,
       borderWidth: 1,
       borderColor: colors.border,
-      paddingVertical: 10,
-      paddingHorizontal: 14,
+      padding: 14,
     },
     legendItem: {
       flexDirection: "row",
@@ -549,10 +555,10 @@ const styles = (colors) =>
 
     textBlock: {
       backgroundColor: colors.card,
+      padding: 18,
       borderRadius: 16,
       borderWidth: 1,
       borderColor: colors.border,
-      padding: 18,
       marginTop: 18,
     },
     textParagraph: {
@@ -569,10 +575,12 @@ const styles = (colors) =>
       borderRadius: 999,
       alignItems: "center",
     },
-    bottomButtonDisabled: { opacity: 0.45 },
+    bottomButtonDisabled: {
+      opacity: 0.4,
+    },
     bottomButtonText: {
-      color: colors.accentText,
       fontSize: 15,
+      color: colors.accentText,
       fontFamily: "Poppins_700Bold",
     },
   });
